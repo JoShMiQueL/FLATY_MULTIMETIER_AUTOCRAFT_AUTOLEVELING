@@ -21,7 +21,7 @@
 
     -- fight option
 
-    local focus
+    local focus = 1
 
 -- GLOBAL VAR FLATYBOT
 
