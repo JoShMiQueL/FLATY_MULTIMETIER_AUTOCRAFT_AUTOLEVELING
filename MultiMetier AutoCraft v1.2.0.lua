@@ -46,7 +46,7 @@
     local teleported, checkRessource, goCheckStock, goCraft, messageBank = false, false, false, false, false
     local currentJob, currentIdJob, currentMapId, currentMode, lastCurrentMode, toolCraft, pathIndex, lastNameZone, beforeLastNameZone, tbLimit = nil, nil, nil, nil, nil, nil, nil, nil, nil
     local iBoucleCraft, currentLevelCharacter, startLevelCharacter = 0, 0, 0
-    local tmpAutoCraft, started = false, false
+    local tmpAutoCraft, started, resetLoop = false, false, false
     local ZoneToFarm =  ""
     local totalXp, totalFight, lastXpGain = 0, 0, 0
 
@@ -78,6 +78,11 @@
     local CRAFT_FILTERED = {}
 
 	local WORKTIME = {
+		{
+			job = "bucheron",
+			debut = "00:00",
+			fin = "23:59"
+		},
 		{
 			job = "bucheron",
 			debut = "07:57",
@@ -940,7 +945,7 @@
                 waitItemOfAnotherJob = false,
                 ingredient = {
                     { name = "Planche contreplaque", nbIng = 2, idItem = 16490, job = "substrat" },
-                    { name = "Potion de souvenir", nbIng = 1, idItem = 7652, job = "substrat" }
+                    { name = "Potion de souvenir", nbIng = 1, idItem = 7652 }
                 }
             },
             {
@@ -973,7 +978,7 @@
                 waitItemOfAnotherJob = false,
                 ingredient = {
                     { name = "Planche grille", nbIng = 1, idItem = 16491, job = "substrat" },
-                    { name = "Potion de souvenir", nbIng = 1, idItem = 7652, job = "substrat" }
+                    { name = "Potion de souvenir", nbIng = 1, idItem = 7652 }
                 }
             },
             {
@@ -1007,7 +1012,7 @@
                 waitItemOfAnotherJob = false,
                 ingredient = {
                     { name = "Planche de surf", nbIng = 1, idItem = 16492, job = "substrat" },
-                    { name = "Potion de souvenir", nbIng = 1, idItem = 7652, job = "substrat" }
+                    { name = "Potion de souvenir", nbIng = 1, idItem = 7652 }
                 }
             },
             {
@@ -1041,7 +1046,7 @@
                 waitItemOfAnotherJob = false,
                 ingredient = {
                     { name = "Planche a repasser", nbIng = 2, idItem = 16493, job = "substrat" },
-                    { name = "Potion de souvenir", nbIng = 1, idItem = 7652, job = "substrat" }
+                    { name = "Potion de souvenir", nbIng = 1, idItem = 7652 }
                 }
             }
         }
@@ -7093,6 +7098,10 @@ function move()
         start()
     end
 
+    if resetLoop then
+        resetInfiniteLoop()
+    end
+
     if not goCraft and checkRessource then
         checkBag()
     end
@@ -7631,6 +7640,17 @@ function missingIngredient(vCraft, vIngredient, iIngredient)
     end
 end
 
+local TESTED_CRAFT = {}
+
+function resetInfiniteLoop()
+    global:printMessage("resetInfiniteLoop()")
+    if map:currentMapId() == 162791424 then
+        resetLoop = false
+    end
+    map:havenbag()
+    global:delay(baseDelay)
+end
+
 function inCoffre() -- Verifie si des craft son disponible si aucun craft dispo assigne les ressource a recolte pour la recette, si craft dispo recupere les item
     local levelJob
     local reCheck = false
@@ -7645,13 +7665,28 @@ function inCoffre() -- Verifie si des craft son disponible si aucun craft dispo 
     --Vérif si craft disponible et assignation des path si aucun craft disponible
         if AUTO_CRAFT then
             local countTryCraft = 0
-            for _, vCraft in pairs(CRAFT_FILTERED) do
-                local goBreak = false
+
+            if #CRAFT_FILTERED == 0 then
+                global:printMessage("reset CRAFT_FILTERED")
+                CRAFT_FILTERED = TESTED_CRAFT
+                TESTED_CRAFT = {}
+            end
+
+            for iCraft, vCraft in pairs(CRAFT_FILTERED) do
                 local next = false
 
                 if goCraft then
                     break
                 end
+
+                if countTryCraft >= 2 then
+                    global:leaveDialog()
+                    global:delay(baseDelay)
+                    countTryCraft = 0
+                    resetLoop = true
+                    resetInfiniteLoop()
+                end
+
                 if currentJob == "bucheron" then
                     if storage:itemCount(vCraft.idItem) >= vCraft.nbItemsBeforeNextCraft then
                         if vCraft.name == "Substrat de buisson" then
@@ -7666,38 +7701,47 @@ function inCoffre() -- Verifie si des craft son disponible si aucun craft dispo 
                     end
                 end
 
-                if vCraft.next == nil then
-                    next = false
-                else
+                if vCraft.next ~= nil then
                     next = vCraft.next
                 end
+
+                --global:printMessage('[DEBUG] countTryCraft : '..countTryCraft..' itemCount : '..storage:itemCount(vCraft.idItem).. ' nbItemsBeforeNextCraft : '..vCraft.nbItemsBeforeNextCraft)
 
                 if vCraft.active and storage:itemCount(vCraft.idItem) < vCraft.nbItemsBeforeNextCraft and not next and not vCraft.waitItemOfAnotherJob then
                     countTryCraft = countTryCraft + 1
                     local lot, canCraft, tblIngredient = canCraft(vCraft.name, currentJob)
                     global:printMessage("[INFO]["..string.upper(currentJob).."] Looking for craft " ..vCraft.name)
+
                     if lot or canCraft then
                         global:printMessage("[INFO]["..string.upper(currentJob).."] Craft de " ..vCraft.name.. " disponible !")
                         goCraft = true
                     end
+
                     for iIngredient, vIngredient in ipairs(vCraft.ingredient) do
                         if goCraft then -- PickItem si craft disponible
                             getItem(vIngredient.idItem, tblIngredient[iIngredient])
                         else -- Sinon Ajout a la table de recolte  
                             missingIngredient(vCraft, vIngredient, iIngredient)
                         end
-                        if iIngredient == #vCraft.ingredient and #TO_FARM > 1 then
-                            goBreak = true
-                        end
-                    end                            
+                    end                                        
                 end
-                if goBreak and #TO_FARM > 0 then
+                table.insert(TESTED_CRAFT, vCraft)
+                --global:printMessage('remove '..CRAFT_FILTERED[iCraft].name)
+                table.remove(CRAFT_FILTERED, iCraft)
+                if #TO_FARM > 0 then
                     break
                 end
             end
         
             if #TO_FARM == 0 and not goCraft then
+                if #CRAFT_FILTERED == 0 then
+                    global:leaveDialog()
+                    global:delay(baseDelay)
+                    resetLoop = true
+                    resetInfiniteLoop()                    
+                end
                 iBoucleCraft = iBoucleCraft + 1
+
                 if iBoucleCraft < 2 then
                     global:printMessage("[INFO]["..string.upper(currentJob).."] Boucle de craft faite on recommence ( re tp pour eviter boucle infini) !")
                     CRAFT.bucheron[2].next = false
