@@ -1,7 +1,7 @@
 ﻿-- */ Base script for FlatyBot \*
 
 -- USER VAR
-    local AUTO_CRAFT = false -- Active ou desactive l'automatisation des craft
+    local AUTO_CRAFT = true -- Active ou desactive l'automatisation des craft
     local DEPOT_MAISON = false -- Pour activer le retourMaison mettre sur true et modifier les fonctions retourMaison et maison ligne 444 et 467
     local GATHER_ALL_RESOURCES_OF_JOB = false -- Si true recolte toutes les ressources du metier actuelle, sinon c'est en fonction des parametre de SELECT_OPTIONS_STOCK_ITEM 
     local PNJ_BANK = "right" -- right/left choisi le pnj dans la banque d'astrub left hiboux blanc, right hiboux noir
@@ -79,23 +79,18 @@
 
 	local WORKTIME = {
 		{
-			job = "leveling",
-			debut = "00:00",
-			fin = "23:59"
-		},
-		{
 			job = "bucheron",
 			debut = "07:57",
-			fin = "10:23"
+			fin = "12:23"
 		},
 		{
 			job = "mineur",
-			debut = "10:23",
-			fin = "12:10"
+			debut = "12:23",
+			fin = "13:10"
 		},
 		{
 			job = "paysan",
-			debut = "12:10",
+			debut = "13:10",
 			fin = "15:14"
 		},
 		{
@@ -7444,6 +7439,7 @@ function setETG() -- Assigne les ressources a recolter dans ELEMENTS_TO_GATHER
             if keyTable == currentJob then
                 for _, vItem in pairs(vTable) do
                     if vItem.minLevel == tag then
+                        global:printMessage('SetETG : '.. vItem.gatherId )
                         table.insert(ELEMENTS_TO_GATHER, vItem.gatherId)
                     end
                 end
@@ -7550,7 +7546,8 @@ function start()
     global:printMessage("[INFO] Bonjour " ..character:name().. " !")
     global:printMessage("[INFO] Trajet MultiMetier realiser par yaya#6140")
     global:printMessage("[INFO] Pour tout probleme critique avec le trajet merci de me mp en m'envoyant l'erreur indique dans la console, le metier et le niveau courant")
-    global:printMessage("[INFO] Ne pas lancez dans la banque !")
+    global:printMessage("[IMPORTANT] Ne pas lancez dans la banque !")
+    global:printMessage("[IMPORTANT] Changer le raccourci 'Fermer les infobulle epingle' par la touche F10 !")
     global:printMessage("[INFO] Bon bottage ^-^ !")
 
     if minute >= 10 then
@@ -7607,8 +7604,10 @@ end
 
 function getItem(idItem, nbItem)
     while inventory:itemCount(idItem) < nbItem do
-        storage:getItem(idItem, nbItem - (inventory:itemCount(idItem) + 1 ))
+        storage:getItem(idItem, nbItem - inventory:itemCount(idItem))
     end
+    global:delay(smallDelay)
+    global:sendKey(121) -- F10
 end
 
 function missingIngredient(vCraft, vIngredient, iIngredient)
@@ -7645,6 +7644,7 @@ function inCoffre() -- Verifie si des craft son disponible si aucun craft dispo 
         setItem()
     --Vérif si craft disponible et assignation des path si aucun craft disponible
         if AUTO_CRAFT then
+            local countTryCraft = 0
             for _, vCraft in pairs(CRAFT_FILTERED) do
                 local goBreak = false
                 local next = false
@@ -7673,6 +7673,7 @@ function inCoffre() -- Verifie si des craft son disponible si aucun craft dispo 
                 end
 
                 if vCraft.active and storage:itemCount(vCraft.idItem) < vCraft.nbItemsBeforeNextCraft and not next and not vCraft.waitItemOfAnotherJob then
+                    countTryCraft = countTryCraft + 1
                     local lot, canCraft, tblIngredient = canCraft(vCraft.name, currentJob)
                     global:printMessage("[INFO]["..string.upper(currentJob).."] Looking for craft " ..vCraft.name)
                     if lot or canCraft then
@@ -8457,8 +8458,6 @@ end
 function MULTIPLE_MAP:Reset(tab)
 	self.CurrentSteps = {}
 end
-
------------------------------------
 
 -- Lmoony ZONE FARMER SCRIPT
 
