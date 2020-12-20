@@ -49,6 +49,7 @@
     local tmpAutoCraft, started, resetLoop = false, false, false
     local ZoneToFarm =  ""
     local totalXp, totalFight, lastXpGain = 0, 0, 0
+    local lastItag, lastIcraft = 0, 0
 
 -- Lmoony VAR
 
@@ -76,6 +77,8 @@
     local FIGHT_FILTERED = {}
 
     local CRAFT_FILTERED = {}
+
+    local TESTED_CRAFT = {}
 
 	local WORKTIME = {
 		{
@@ -7174,6 +7177,7 @@ end
 function lost()
     currentMapId = map:currentMapId()
     global:printMessage("[INFO]["..string.upper(currentJob).."] Bot perdu ! MapId = " ..currentMapId)
+    global:delay(baseDelay)
     finDeBoucle()
 end
 
@@ -7395,7 +7399,6 @@ end
 
 function checkStock()
     local levelJob = job:level(currentIdJob)
-
     if GATHER_ALL_RESOURCES_OF_JOB then
         global:printMessage("[INFO] GATHER_ALL_RESOURCES_OF_JOB et sur true, recolte de toutes les ressource possible du metier actuelle !")
         for keyTable, vTable in pairs(ITEM) do
@@ -7409,6 +7412,7 @@ function checkStock()
             end
         end
     else
+        killDoubleValue(TO_FARM)
         for keyTable, vTable in pairs(ITEM) do
             if keyTable == currentJob then
                 for _, vItem in pairs(vTable) do
@@ -7430,10 +7434,12 @@ function checkStock()
                         end
                     end
                 end
+
             end
         end
         setETG()
     end
+    lastItag = 0
     unsetETG()
     pathReplace()
     goCheckStock = false
@@ -7443,13 +7449,21 @@ function checkStock()
 end
 
 function setETG() -- Assigne les ressources a recolter dans ELEMENTS_TO_GATHER
-    for _, tag in pairs(TO_FARM) do
-        for keyTable, vTable in pairs(ITEM) do
-            if keyTable == currentJob then
-                for _, vItem in pairs(vTable) do
-                    if vItem.minLevel == tag then
-                        global:printMessage('SetETG : '.. vItem.gatherId )
-                        table.insert(ELEMENTS_TO_GATHER, vItem.gatherId)
+    for kTable, vTable in pairs(ITEM) do
+        if kTable == currentJob then
+            if #TO_FARM > 0 then
+                for iTag, vTag in pairs(TO_FARM) do
+                    --global:printMessage('Looking for '..vTag)
+                    if iTag > lastItag or lastItag == 0 then
+                        for _, vItem in pairs(vTable) do
+                            --global:printMessage('vTag : '..vTag..' vItem : '..vItem.name)
+                            if vItem.name == vTag then
+                                --global:printMessage(vItem.name..' added SetETG : '..vItem.gatherId)
+                                table.insert(ELEMENTS_TO_GATHER, vItem.gatherId)
+                                lastItag = iTag
+                                break
+                            end
+                        end 
                     end
                 end
             end
@@ -7640,12 +7654,13 @@ function missingIngredient(vCraft, vIngredient, iIngredient)
     end
 end
 
-local TESTED_CRAFT = {}
-
 function resetInfiniteLoop()
-    global:printMessage("resetInfiniteLoop()")
-    if map:currentMapId() == 162791424 then
+    local currentMap = map:currentMapId()
+    if currentMap == 162791424 then
+        global:printMessage("[INFO] Retour havre")
         resetLoop = false
+    else
+        global:printMessage("[INFO] Tp havre debug boucle infinie")        
     end
     map:havenbag()
     global:delay(baseDelay)
@@ -7666,80 +7681,72 @@ function inCoffre() -- Verifie si des craft son disponible si aucun craft dispo 
         if AUTO_CRAFT then
             local countTryCraft = 0
 
-            if #CRAFT_FILTERED == 0 then
-                global:printMessage("reset CRAFT_FILTERED")
-                CRAFT_FILTERED = TESTED_CRAFT
-                TESTED_CRAFT = {}
-            end
-
             for iCraft, vCraft in pairs(CRAFT_FILTERED) do
-                local next = false
+                if iCraft > lastIcraft or lastIcraft == 0 then
+                    local next = false
 
-                if goCraft then
-                    break
-                end
-
-                if countTryCraft >= 2 then
-                    global:leaveDialog()
-                    global:delay(baseDelay)
-                    countTryCraft = 0
-                    resetLoop = true
-                    resetInfiniteLoop()
-                end
-
-                if currentJob == "bucheron" then
-                    if storage:itemCount(vCraft.idItem) >= vCraft.nbItemsBeforeNextCraft then
-                        if vCraft.name == "Substrat de buisson" then
-                            CRAFT.bucheron[2].next = true
-                        elseif vCraft.name == "Substrat de bocage" then
-                            CRAFT.bucheron[4].next = true
-                        elseif vCraft.name == "Substrat de futaie" then
-                            CRAFT.bucheron[6].next = true
-                        elseif vCraft.name == "Substrat de fascine" then
-                            CRAFT.bucheron[8].next = true
-                        end
-                    end
-                end
-
-                if vCraft.next ~= nil then
-                    next = vCraft.next
-                end
-
-                --global:printMessage('[DEBUG] countTryCraft : '..countTryCraft..' itemCount : '..storage:itemCount(vCraft.idItem).. ' nbItemsBeforeNextCraft : '..vCraft.nbItemsBeforeNextCraft)
-
-                if vCraft.active and storage:itemCount(vCraft.idItem) < vCraft.nbItemsBeforeNextCraft and not next and not vCraft.waitItemOfAnotherJob then
-                    countTryCraft = countTryCraft + 1
-                    local lot, canCraft, tblIngredient = canCraft(vCraft.name, currentJob)
-                    global:printMessage("[INFO]["..string.upper(currentJob).."] Looking for craft " ..vCraft.name)
-
-                    if lot or canCraft then
-                        global:printMessage("[INFO]["..string.upper(currentJob).."] Craft de " ..vCraft.name.. " disponible !")
-                        goCraft = true
+                    if goCraft then
+                        break
                     end
 
-                    for iIngredient, vIngredient in ipairs(vCraft.ingredient) do
-                        if goCraft then -- PickItem si craft disponible
-                            getItem(vIngredient.idItem, tblIngredient[iIngredient])
-                        else -- Sinon Ajout a la table de recolte  
-                            missingIngredient(vCraft, vIngredient, iIngredient)
+                    if countTryCraft >= 2 then
+                        global:leaveDialog()
+                        global:delay(baseDelay)
+                        resetLoop = true
+                        resetInfiniteLoop()
+                    end
+
+                    if currentJob == "bucheron" then
+                        if storage:itemCount(vCraft.idItem) >= vCraft.nbItemsBeforeNextCraft then
+                            if vCraft.name == "Substrat de buisson" then
+                                CRAFT.bucheron[2].next = true
+                            elseif vCraft.name == "Substrat de bocage" then
+                                CRAFT.bucheron[4].next = true
+                            elseif vCraft.name == "Substrat de futaie" then
+                                CRAFT.bucheron[6].next = true
+                            elseif vCraft.name == "Substrat de fascine" then
+                                CRAFT.bucheron[8].next = true
+                            end
                         end
-                    end                                        
-                end
-                table.insert(TESTED_CRAFT, vCraft)
-                --global:printMessage('remove '..CRAFT_FILTERED[iCraft].name)
-                table.remove(CRAFT_FILTERED, iCraft)
-                if #TO_FARM > 0 then
-                    break
+                    end
+
+                    if vCraft.next ~= nil then
+                        next = vCraft.next
+                    end
+
+                    --global:printMessage('[DEBUG] countTryCraft : '..countTryCraft..' itemCount : '..storage:itemCount(vCraft.idItem).. ' nbItemsBeforeNextCraft : '..vCraft.nbItemsBeforeNextCraft)
+                    --global:printMessage('[DEBUG] name : '..vCraft.name.. ' active : '..tostring(vCraft.active)..' next : '..tostring(vCraft.next)..' waitItem : '..tostring(vCraft.waitItemOfAnotherJob)..' itemCount : '..storage:itemCount(vCraft.idItem).. ' nbItemsBeforeNextCraft : '..vCraft.nbItemsBeforeNextCraft)
+
+                    if vCraft.active and storage:itemCount(vCraft.idItem) < vCraft.nbItemsBeforeNextCraft and not next and not vCraft.waitItemOfAnotherJob then
+                        countTryCraft = countTryCraft + 1
+                        local lot, canCraft, tblIngredient = canCraft(vCraft.name, currentJob)
+                        global:printMessage("[INFO]["..string.upper(currentJob).."] Looking for craft " ..vCraft.name)
+
+                        if lot or canCraft then
+                            global:printMessage("[INFO]["..string.upper(currentJob).."] Craft de " ..vCraft.name.. " disponible !")
+                            goCraft = true
+                        end
+
+                        for iIngredient, vIngredient in ipairs(vCraft.ingredient) do
+                            if goCraft then -- PickItem si craft disponible
+                                getItem(vIngredient.idItem, tblIngredient[iIngredient])
+                            else -- Sinon Ajout a la table de recolte  
+                                missingIngredient(vCraft, vIngredient, iIngredient)
+                            end
+                        end                                        
+                    end
+                    table.insert(TESTED_CRAFT, vCraft)
+                    lastIcraft = iCraft
+                    --global:printMessage('remove '..CRAFT_FILTERED[iCraft].name)
+                    if #TO_FARM > 0 then
+                        break
+                    end
                 end
             end
-        
+            
+            lastIcraft = 0
+
             if #TO_FARM == 0 and not goCraft then
-                if #CRAFT_FILTERED == 0 then
-                    global:leaveDialog()
-                    global:delay(baseDelay)
-                    resetLoop = true
-                    resetInfiniteLoop()                    
-                end
                 iBoucleCraft = iBoucleCraft + 1
 
                 if iBoucleCraft < 2 then
@@ -8096,7 +8103,7 @@ end
 
 function printSimpleTable(tbl)
     for i, v in pairs(tbl) do
-        global:printMessage(v)
+        global:printMessage("[PRINT]" ..v)
     end
 end
 
