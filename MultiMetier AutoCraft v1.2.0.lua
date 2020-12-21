@@ -53,6 +53,8 @@
     local totalXp, totalFight, lastXpGain = 0, 0, 0
     local lastItag, lastIcraft=  0, 0
     local totalGather, lastTotalGather = 0, 0,
+    local lastItag, lastIcraft = 0, 0
+
 
 -- Lmoony VAR
 
@@ -81,9 +83,16 @@
 
     local CRAFT_FILTERED = {}
 
+    local TESTED_CRAFT = {}
+
 	local WORKTIME = {
 		{
 			job = "mineur",
+			debut = "00:00",
+			fin = "23:59"
+		},
+		{
+			job = "bucheron",
 			debut = "00:00",
 			fin = "23:59"
 		},
