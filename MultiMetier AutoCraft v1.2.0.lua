@@ -1,6 +1,7 @@
 ﻿-- */ Base script for FlatyBot \*
 
 -- USER VAR
+    local AUTO_OPEN_BAG = true -- Active ou desactive l'ouverture auto des sac de ressources
     local AUTO_CRAFT = true -- Active ou desactive l'automatisation des craft
     local DEPOT_MAISON = false -- Pour activer le retourMaison mettre sur true et modifier les fonctions retourMaison et maison ligne 444 et 467
     local GATHER_ALL_RESOURCES_OF_JOB = false -- Si true recolte toutes les ressources du metier actuelle, sinon c'est en fonction des parametre de SELECT_OPTIONS_STOCK_ITEM 
@@ -52,8 +53,8 @@
     local ZoneToFarm =  ""
     local totalXp, totalFight, lastXpGain = 0, 0, 0
     local lastItag, lastIcraft=  0, 0
-    local totalGather, lastTotalGather = 0, 0,
-    local lastItag, lastIcraft = 0, 0
+    local totalGather, lastTotalGather = 0, 0
+
 
 
 -- Lmoony VAR
@@ -7001,6 +7002,9 @@
         end
     }
 
+    local tblIndexAddedPath = {}
+
+
 function equipItem()
     --global:printMessage("equipItem()")
 end
@@ -7115,10 +7119,6 @@ function move()
         resetInfiniteLoop()
     end
 
-    if not goCraft and checkRessource then
-        checkBag()
-    end
-
     if not checkRessource then
         if DEPOT_MAISON then
             if not teleported then
@@ -7206,6 +7206,10 @@ function gatherMode()
 
     if not filterPathByTags then
         filterPath()
+    end
+
+    if not goCraft and AUTO_OPEN_BAG then
+        checkBag()
     end
 
     if timeZoneMode then
@@ -7365,28 +7369,41 @@ function setPath(tbl)
 end
 
 function filterPath()
+    global:printMessage("[INFO]["..string.upper(currentJob).. "] Filtrage des PATH a farm")
     killDoubleValue(TO_FARM)
-    local goBreak
-    local indexTmp = {}
+    printSimpleTable(TO_FARM)
     PATH_FILTERED = {}
+    tblIndexAddedPath = {}
     while true do
-        if #TO_FARM > 1 then
-            for index, vFarm in pairs(TO_FARM) do
-                for kJobPath, vJobPath in pairs(PATH_JOB) do
-                    if kJobPath == currentJob then
-                        for iPath, vPath in pairs(vJobPath) do
-                            local insert = false
-                            for _, vTag in pairs(vPath.tags) do
-                                if vTag == vFarm then
-                                    insert = true
-                                    break
+        if #TO_FARM > 0 then
+            for kJob, vTable in pairs(PATH_JOB) do
+                local match = false
+                if kJob == currentJob then
+                    match = true
+                    for _, vTag in pairs(TO_FARM) do
+                        --global:printMessage("vTag : "..vTag.. ' lenght : '..#TO_FARM)
+                        for iPath, vPath in pairs(vTable) do
+                            if not alreadyAdded(iPath) then
+                                --global:printMessage("Looking for add "..vPath.name)
+                                local goBreak = false
+                                for _, vTagPath in pairs(vPath.tags) do
+                                    if goBreak then
+                                        break
+                                    end
+                                    if vTag == vTagPath then
+                                        table.insert(tblIndexAddedPath, iPath)
+                                        table.insert(PATH_FILTERED, vPath)
+                                        --global:printMessage(vPath.name.." added vTag : "..vTag.." vTagPath : "..vTagPath)
+                                        goBreak = true
+                                        break                                                               
+                                    end
                                 end
-                            end
-                            if insert then
-                                table.insert(PATH_FILTERED, vPath)
                             end
                         end
                     end
+                end
+                if match then
+                    break
                 end
             end
         end
@@ -7407,6 +7424,17 @@ function filterPath()
     filterPathByTags = true
 end
 
+function alreadyAdded(index)
+    if #tblIndexAddedPath > 0 then
+        for _, v in pairs(tblIndexAddedPath) do
+            if v == index then
+                return true
+            end
+        end
+    end
+    return false
+end
+
 function checkStock()
     local levelJob = job:level(currentIdJob)
     if GATHER_ALL_RESOURCES_OF_JOB then
@@ -7423,6 +7451,7 @@ function checkStock()
         end
     else
         killDoubleValue(TO_FARM)
+        --global:printMessage("check stock lenght : "..#TO_FARM)
         for keyTable, vTable in pairs(ITEM) do
             if keyTable == currentJob then
                 for _, vItem in pairs(vTable) do
@@ -7449,6 +7478,7 @@ function checkStock()
         end
         setETG()
     end
+    --global:printMessage("check stock lenght : "..#TO_FARM)
     lastItag = 0
     unsetETG()
     pathReplace()
@@ -7740,7 +7770,7 @@ function inCoffre() -- Verifie si des craft son disponible si aucun craft dispo 
                         for iIngredient, vIngredient in ipairs(vCraft.ingredient) do
                             if goCraft then -- PickItem si craft disponible
                                 getItem(vIngredient.idItem, tblIngredient[iIngredient])
-                            else -- Sinon Ajout a la table de recolte  
+                            elseif tblIngredient[iIngredient] == 0 then -- Sinon Ajout a la table de recolte  
                                 missingIngredient(vCraft, vIngredient, iIngredient)
                             end
                         end                                        
