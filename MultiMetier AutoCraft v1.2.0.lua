@@ -1,4 +1,4 @@
-﻿-- */ Base script for FlatyBot \*
+﻿-- */ Base script for FlatyBot \
 
 -- USER VAR
     local AUTO_CRAFT = true -- Active ou desactive l'automatisation des craft
