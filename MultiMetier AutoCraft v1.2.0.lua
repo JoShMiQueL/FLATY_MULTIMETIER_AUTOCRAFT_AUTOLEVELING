@@ -55,6 +55,8 @@
     local lastItag, lastIcraft=  0, 0
     local totalGather, lastTotalGather = 0, 0
 
+
+
 -- Lmoony VAR
 
     local Directions = {
