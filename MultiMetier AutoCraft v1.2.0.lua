@@ -1,10 +1,11 @@
 ﻿-- */ Base script for FlatyBot \*
 
 -- USER VAR
+    local AUTO_OPEN_BAG = true -- Active ou desactive l'ouverture auto des sac de ressources
     local AUTO_CRAFT = true -- Active ou desactive l'automatisation des craft
     local DEPOT_MAISON = false -- Pour activer le retourMaison mettre sur true et modifier les fonctions retourMaison et maison ligne 444 et 467
     local GATHER_ALL_RESOURCES_OF_JOB = false -- Si true recolte toutes les ressources du metier actuelle, sinon c'est en fonction des parametre de SELECT_OPTIONS_STOCK_ITEM 
-    local PNJ_BANK = "right" -- right/left choisi le pnj dans la banque d'astrub left hiboux blanc, right hiboux noir
+    local PNJ_BANK = "left" -- right/left choisi le pnj dans la banque d'astrub left hiboux blanc, right hiboux noir
 
     local FRIGOST1 = false -- A activer si vous avez fait les donjon RM/MR (débloque la mine maksage + les 2 mines a sakai)
     local FRIGOST2 = false -- A activer si vous avez fait le donjon BEN (débloque une mine)
@@ -19,6 +20,8 @@
     local tMin = 13 -- Temps mini a faire dans une zone avant changement de zone ( en minutes )
     local tMax = 17 -- Temps maxi a faire dans une zone avant changement de zone ( en minutes )
 
+    local gatherAttemptByMap = 2 -- Tentative de récolte par map avant de changer de map (uniquement pour mineur pour l'instant)
+    local delayToRetryGather = 500 -- Delais entre les tentative de récolte Mini 500 (en ms)
     -- fight option
 
     local focus = 1
@@ -49,6 +52,8 @@
     local tmpAutoCraft, started, resetLoop = false, false, false
     local ZoneToFarm =  ""
     local totalXp, totalFight, lastXpGain = 0, 0, 0
+    local lastItag, lastIcraft=  0, 0
+    local totalGather, lastTotalGather = 0, 0
     local lastItag, lastIcraft = 0, 0
 
 -- Lmoony VAR
@@ -81,6 +86,11 @@
     local TESTED_CRAFT = {}
 
 	local WORKTIME = {
+		{
+			job = "mineur",
+			debut = "00:00",
+			fin = "23:59"
+		},
 		{
 			job = "bucheron",
 			debut = "00:00",
@@ -3716,11 +3726,11 @@
 				        { map = "88081412", changeMap = "bottom" },
 				        { map = "88081413", changeMap = "right" },
 				        { map = "88081925", changeMap = "164" },
-				        { map = "97255937", gather = true, changeMap = "360" },
-				        { map = "97256961", gather = true, changeMap = "276" },
-				        { map = "97257985", gather = true, changeMap = "436" },
-				        { map = "97256961", gather = true, changeMap = "351" },
-				        { map = "97255937", gather = true, changeMap = "360", custom = bouclePlus },
+				        { map = "97255937", changeMap = "360", custom = TryGather },
+				        { map = "97256961", changeMap = "276", custom = TryGather },
+				        { map = "97257985", changeMap = "436", custom = TryGather },
+				        { map = "97256961", changeMap = "351", custom = TryGather },
+				        { map = "97255937", changeMap = "360", custom = TryGatherWithBP },
 			        })
 		        end			
 	        },
@@ -3755,16 +3765,16 @@
 				        { map = "88083203", changeMap = "top" },
 				        { map = "88083204", changeMap = "left" },
 				        { map = "88082692", changeMap = "332" },
-				        { map = "97260033", gather = true, changeMap = "405" },
-				        { map = "97261057", gather = true, changeMap = "421" },
-				        { map = "97259011", gather = true, changeMap = "276" },
-				        { map = "97261057", gather = true, changeMap = "235" },
-				        { map = "97255939", gather = true, changeMap = "446" },
-                        { map = "97256963", gather = true, changeMap = "492" },
+				        { map = "97260033", changeMap = "405", custom = TryGather },
+				        { map = "97261057", changeMap = "421", custom = TryGather },
+				        { map = "97259011", changeMap = "276", custom = TryGather},
+				        { map = "97261057", changeMap = "235", custom = TryGather },
+				        { map = "97255939", changeMap = "446", custom = TryGather },
+                        { map = "97256963", changeMap = "492", custom = TryGather },
                         { map = "97257987", changeMap = "212" },
-				        { map = "97261057", gather = true, changeMap = "227" },
-				        { map = "97260033", gather = true, changeMap = "183" },
-				        { map = "97261059", gather = true, changeMap = "417", custom = bouclePlus },
+				        { map = "97261057", changeMap = "227", custom = TryGather },
+				        { map = "97260033", changeMap = "183", custom = TryGather },
+				        { map = "97261059", changeMap = "417", custom = TryGatherWithBP },
                     })
                 end
             },
@@ -3794,9 +3804,9 @@
                         { map = "185862149", changeMap = "top" },
                         { map = "185862148", changeMap = "367" },
                         { map = "97255951", changeMap = "203" },
-                        { map = "97256975", gather = true, changeMap = "323" },
-                        { map = "97257999", gather = true, changeMap = "268" },
-                        { map = "97260047", gather = true, changeMap = "432", custom = finDeBoucle },
+                        { map = "97256975", changeMap = "323", custom = TryGather },
+                        { map = "97257999", changeMap = "268", custom = TryGather },
+                        { map = "97260047", changeMap = "432", custom = TryGatherWithFDB },
                     })
                 end
             },
@@ -3830,32 +3840,32 @@
                         { map = "88212750", changeMap = "left" },
                         { map = "88213262", changeMap = "left" },
                         { map = "88213774", changeMap = "354" },
-                        { map = "97259013", gather = true, changeMap = "258" },
-                        { map = "97260037", gather = true, changeMap = "352" },
-                        { map = "97261061", gather = true, changeMap = "284" },
-                        { map = "97255943", gather = true, changeMap = "403" },
-                        { map = "97261061", gather = true, changeMap = "458" },
-                        { map = "97260037", gather = true, changeMap = "430" },
-                        { map = "97259013", gather = true, changeMap = "276" },
+                        { map = "97259013", changeMap = "258", custom = TryGather },
+                        { map = "97260037", changeMap = "352", custom = TryGather },
+                        { map = "97261061", changeMap = "284", custom = TryGather },
+                        { map = "97255943", changeMap = "403", custom = TryGather },
+                        { map = "97261061", changeMap = "458", custom = TryGather },
+                        { map = "97260037", changeMap = "430", custom = TryGather },
+                        { map = "97259013", changeMap = "276", custom = TryGather },
                         { map = "97256967", changeMap = "194" },
                         { map = "97260039", changeMap = "262" },
                         { map = "97257993", changeMap = "122" },
                         { map = "97261065", changeMap = "236" },
                         { map = "97259019", changeMap = "276" },
-                        { map = "97260043", gather = true, changeMap = "451" },
+                        { map = "97260043", changeMap = "451", custom = TryGather },
                         { map = "97259019", changeMap = "438" },
                         { map = "97261065", changeMap = "213" },
                         { map = "97255947", changeMap = "199" },
                         { map = "97256971", changeMap = "239" },
-                        { map = "97257995", gather = true, changeMap = "374" },
+                        { map = "97257995", changeMap = "374", custom = TryGather },
                         { map = "97256971", changeMap = "503" },
                         { map = "97255947", changeMap = "500"},
                         { map = "97261065", changeMap = "479" },
                         { map = "97257993", changeMap = "537" },
                         { map = "97260039", changeMap = "241" },
-                        { map = "97261063", gather = true, changeMap = "459" },
+                        { map = "97261063", changeMap = "459", custom = TryGather },
                         { map = "97260039", changeMap = "451" },
-                        { map = "97256967", changeMap = "518", custom = bouclePlus },
+                        { map = "97256967", changeMap = "518", custom = TryGatherWithBP },
                     })
                 end
             },
@@ -3887,10 +3897,10 @@
                         { map = "188744196", changeMap = "left" },
                         { map = "188743684", changeMap = "bottom" },
                         { map = "188743685", changeMap = "415" },
-                        { map = "188482052", gather = true, changeMap = "167" },
-                        { map = "188483076", gather = true, changeMap = "349" },
-                        { map = "188484100", gather = true, changeMap = "169" },
-                        { map = "188483076", gather = true, changeMap = "476", custom = bouclePlus },
+                        { map = "188482052", changeMap = "167", custom = TryGather },
+                        { map = "188483076", changeMap = "349", custom = TryGather },
+                        { map = "188484100", changeMap = "169", custom = TryGather },
+                        { map = "188483076", changeMap = "476", custom = TryGatherWithBP },
                     })
                 end
             },
@@ -3917,19 +3927,19 @@
                         { map = "156240386", changeMap = "right" },
                         { map = "156240898", changeMap = "right" },
                         { map = "156241410", changeMap = "149" },
-                        { map = "133431302", gather = true, changeMap = "193" },
-                        { map = "133431300", gather = true, changeMap = "180" }, -- Reboucle
-                        { map = "133431298", gather = true, changeMap = "460" },
-                        { map = "133432322", gather = true, changeMap = "129" },
-                        { map = "133432320", gather = true, changeMap = "149" },
-                        { map = "133432578", gather = true, changeMap = "450" },
-                        { map = "133432320", gather = true, changeMap = "365" },
-                        { map = "133431296", gather = true, changeMap = "307" },
-                        { map = "133432320", gather = true, changeMap = "487" },
-                        { map = "133432322", gather = true, changeMap = "362" },
-                        { map = "133433346", gather = true, changeMap = "337" },
-                        { map = "133432322", gather = true, changeMap = "337" },
-                        { map = "133431298", gather = true, changeMap = "490", custom = bouclePlus },
+                        { map = "133431302", changeMap = "193", custom = TryGather },
+                        { map = "133431300", changeMap = "180", custom = TryGather }, -- Reboucle
+                        { map = "133431298", changeMap = "460", custom = TryGather },
+                        { map = "133432322", changeMap = "129", custom = TryGather },
+                        { map = "133432320", changeMap = "149", custom = TryGather },
+                        { map = "133432578", changeMap = "450", custom = TryGather },
+                        { map = "133432320", changeMap = "365", custom = TryGather },
+                        { map = "133431296", changeMap = "307", custom = TryGather },
+                        { map = "133432320", changeMap = "487", custom = TryGather },
+                        { map = "133432322", changeMap = "362", custom = TryGather },
+                        { map = "133433346", changeMap = "337", custom = TryGather },
+                        { map = "133432322", changeMap = "337", custom = TryGather },
+                        { map = "133431298", changeMap = "490", custom = TryGatherWithBP },
                     })
                 end
             },
@@ -3965,10 +3975,10 @@
                         { map = "88080391", changeMap = "bottom" },
                         { map = "72619521", changeMap = "bottom" },
                         { map = "72619522", changeMap = "147" },
-                        { map = "30672658", gather = true, changeMap = "362" },
-                        { map = "30672655", gather = true, changeMap = "221" },
-                        { map = "30672649", gather = true, changeMap = "408" },
-                        { map = "30672655", gather = true, changeMap = "270", custom = bouclePlus },
+                        { map = "30672658", changeMap = "362", custom = TryGather },
+                        { map = "30672655", changeMap = "221", custom = TryGather },
+                        { map = "30672649", changeMap = "408", custom = TryGather },
+                        { map = "30672655", changeMap = "270", custom = TryGatherWithBP },
                     })
                 end
             },
@@ -4005,12 +4015,12 @@
                         { map = "72619523", changeMap = "left" },
                         { map = "72619011", changeMap = "left" },
                         { map = "72618499", changeMap = "85" },
-                        { map = "30671116", gather = true, changeMap = "292" },
-                        { map = "30671110", gather = true, changeMap = "479" },
-                        { map = "30671107", gather = true, changeMap = "298" },
-                        { map = "30670848", gather = true, changeMap = "344" },
-                        { map = "30671107", gather = true, changeMap = "247" },
-                        { map = "30671110", gather = true, changeMap = "188", custom = bouclePlus },
+                        { map = "30671116", changeMap = "292", custom = TryGather },
+                        { map = "30671110", changeMap = "479", custom = TryGather },
+                        { map = "30671107", changeMap = "298", custom = TryGather },
+                        { map = "30670848", changeMap = "344", custom = TryGather },
+                        { map = "30671107", changeMap = "247", custom = TryGather },
+                        { map = "30671110", changeMap = "188", custom = TryGatherWithBP },
                     })
                 end
             },
@@ -4040,16 +4050,16 @@
                         { map = "88213269", changeMap = "bottom" },
                         { map = "88213268", changeMap = "bottom" },
                         { map = "88213267", changeMap = "250" },
-                        { map = "97255949", gather = true, changeMap = "376" },
-                        { map = "97256973", gather = true, changeMap = "537" },
-                        { map = "97260045", gather = true, changeMap = "254" },
-                        { map = "97261069", gather = true, changeMap = "348" },
-                        { map = "97260045", gather = true, changeMap = "291" },
-                        { map = "97256973", gather = true, changeMap = "122" },
-                        { map = "97257997", gather = true, changeMap = "235" },
-                        { map = "97259021", gather = true, changeMap = "323" },
-                        { map = "97257997", gather = true, changeMap = "451" },
-                        { map = "97256973", gather = true, changeMap = "157", custom = bouclePlus },
+                        { map = "97255949", changeMap = "376", custom = TryGather },
+                        { map = "97256973", changeMap = "537", custom = TryGather },
+                        { map = "97260045", changeMap = "254", custom = TryGather },
+                        { map = "97261069", changeMap = "348", custom = TryGather },
+                        { map = "97260045", changeMap = "291", custom = TryGather },
+                        { map = "97256973", changeMap = "122", custom = TryGather },
+                        { map = "97257997", changeMap = "235", custom = TryGather },
+                        { map = "97259021", changeMap = "323", custom = TryGather },
+                        { map = "97257997", changeMap = "451", custom = TryGather },
+                        { map = "97256973", changeMap = "157", custom = TryGatherWithBP },
                     })
                 end
             },
@@ -4080,8 +4090,8 @@
                         { map = "172231695", changeMap = "bottom" },
                         { map = "172231696", changeMap = "right" },
                         { map = "172232208", changeMap = "194" },
-                        { map = "178784266", gather = true, changeMap = "127" },
-                        { map = "178785290", gather = true, changeMap = "530", custom = bouclePlus },
+                        { map = "178784266", changeMap = "127", custom = TryGather },
+                        { map = "178785290", changeMap = "530", custom = TryGatherWithBP }
                     })
                 end
             }, 
@@ -4114,11 +4124,11 @@
                         { map = "28312324", changeMap = "right" },
                         { map = "28312836", changeMap = "446" },
                         { map = "29622534", changeMap = "275" },
-                        { map = "29622531", gather = true, changeMap = "180" },
-                        { map = "29622272", gather = true, changeMap = "180" },
-                        { map = "29622275", gather = true, changeMap = "450" },
-                        { map = "29622275", gather = true, changeMap = "450" },
-                        { map = "29622272", gather = true, changeMap = "450", custom = bouclePlus },
+                        { map = "29622531", changeMap = "180", custom = TryGather },
+                        { map = "29622272", changeMap = "180", custom = TryGather},
+                        { map = "29622275", changeMap = "450", custom = TryGather },
+                        { map = "29622275", changeMap = "450", custom = TryGather },
+                        { map = "29622272", changeMap = "450", custom = TryGatherWithBP },
                     })
                 end
             }, 
@@ -4151,8 +4161,8 @@
                         { map = "172231168", changeMap = "left" },
                         { map = "172230656", changeMap = "top" },
                         { map = "173016076", changeMap = "51" },
-                        { map = "178785280", gather = true, changeMap = "447" },
-                        { map = "178785284", gather = true, changeMap = "336", custom = finDeBoucle },
+                        { map = "178785280", changeMap = "447", custom = TryGather },
+                        { map = "178785284", custom = TryGatherWithFDB },
                     })
                 end
             }, 
@@ -4188,24 +4198,24 @@
                         { map = "173018117", changeMap = "left" },
                         { map = "173017605", changeMap = "493" },
                         { map = "173017606", changeMap = "268" },
-                        { map = "178782208", gather = true, custom = clickMap },
-                        { map = "178782210", gather = true, custom = clickMap },
-                        { map = "178782208", gather = true, changeMap = "138" },
-                        { map = "178783232", gather = true, changeMap = "204" },
-                        { map = "178784256", gather = true, changeMap = "476" },
-                        { map = "178783232", gather = true, changeMap = "213" },
-                        { map = "178783236", gather = true, changeMap = "138" },
-                        { map = "178784260", gather = true, changeMap = "406" },
-                        { map = "178783236", gather = true, changeMap = "323" },
-                        { map = "178782214", gather = true, changeMap = "507" },
+                        { map = "178782208", custom = TryGatherWithCM },
+                        { map = "178782210", custom = TryGatherWithCM },
+                        { map = "178782208", changeMap = "138", custom = TryGather },
+                        { map = "178783232", changeMap = "204", custom = TryGather },
+                        { map = "178784256", changeMap = "476", custom = TryGather },
+                        { map = "178783232", changeMap = "213", custom = TryGather },
+                        { map = "178783236", changeMap = "138", custom = TryGather },
+                        { map = "178784260", changeMap = "406", custom = TryGather },
+                        { map = "178783236", changeMap = "323", custom = TryGather },
+                        { map = "178782214", changeMap = "507", custom = TryGather },
                         { map = "178782216", changeMap = "450" },
-                        { map = "178782218", gather = true, changeMap = "518" },
-                        { map = "178782220", gather = true, changeMap = "57" },
-                        { map = "178782218", gather = true, custom = clickMap },
-                        { map = "178782216", gather = true, changeMap = "162" },
-                        { map = "178782214", gather = true, changeMap = "179" },
-                        { map = "178783236", gather = true, changeMap = "527" },
-                        { map = "178783232", gather = true, changeMap = "406", custom = bouclePlus },
+                        { map = "178782218", changeMap = "518", custom = TryGather },
+                        { map = "178782220", changeMap = "57", custom = TryGather },
+                        { map = "178782218", custom = TryGatherWithCM },
+                        { map = "178782216", changeMap = "162", custom = TryGather },
+                        { map = "178782214", changeMap = "179", custom = TryGather },
+                        { map = "178783236", changeMap = "527", custom = TryGather },
+                        { map = "178783232", changeMap = "406", custom = TryGatherWithBP }
                     })
                 end
             }, 
@@ -4234,7 +4244,7 @@
                         { map = "147590153", changeMap = "top" },
                         { map = "147590152", changeMap = "top" },
                         { map = "147590151", custom = clickMap },
-                        { map = "164758273", gather = true, custom = finDeBoucle },
+                        { map = "164758273", custom = TryGatherWithFDB },
                     })
                 end
             }, 
@@ -4273,16 +4283,16 @@
                         { map = "88087304", changeMap = "top" },
                         { map = "88087305", custom = clickMap },
                         { map = "117440512", changeMap = "222" },
-                        { map = "117441536", gather = true, changeMap = "167" },
-                        { map = "117442560", gather = true, changeMap = "473" },
-                        { map = "117443584", gather = true, changeMap = "236" },
-                        { map = "117440514", gather = true, changeMap = "307" },
-                        { map = "117441538", gather = true, changeMap = "250" },
-                        { map = "117442562", gather = true, changeMap = "395" },
-                        { map = "117441538", gather = true, changeMap = "421" },
-                        { map = "117440514", gather = true, changeMap = "393" },
-                        { map = "117443584", gather = true, changeMap = "253" },
-                        { map = "117442560", gather = true, changeMap = "434", custom = bouclePlus },
+                        { map = "117441536", changeMap = "167", custom = TryGather },
+                        { map = "117442560", changeMap = "473", custom = TryGather },
+                        { map = "117443584", changeMap = "236", custom = TryGather },
+                        { map = "117440514", changeMap = "307", custom = TryGather },
+                        { map = "117441538", changeMap = "250", custom = TryGather },
+                        { map = "117442562", changeMap = "395", custom = TryGather },
+                        { map = "117441538", changeMap = "421", custom = TryGather },
+                        { map = "117440514", changeMap = "393", custom = TryGather },
+                        { map = "117443584", changeMap = "253", custom = TryGather },
+                        { map = "117442560", changeMap = "434", custom = TryGatherWithBP }
                     })
                 end
             }, 
@@ -4314,8 +4324,8 @@
                         { map = "171967500", changeMap = "top" },
                         { map = "171967499", changeMap = "left" },
                         { map = "171966987", custom = clickMap },
-                        { map = "178785286", gather = true, changeMap = "113" },
-                        { map = "178785288", gather = true, custom = finDeBoucle },
+                        { map = "178785286", changeMap = "113", custom = TryGather },
+                        { map = "178785288", custom = TryGatherWithFDB }
                     })
                 end
             }, 
@@ -4343,7 +4353,7 @@
                         { map = "84411392", custom = clickMap },
                         { map = "84410880", changeMap = "left" },
                         { map = "84410368", custom = clickMap },
-                        { map = "86246410", gather = true, changeMap = "431" },
+                        { map = "86246410", changeMap = "431", custom = TryGather },
                         { map = "84410368", custom = finDeBoucle },
                     })
                 end
@@ -4381,7 +4391,7 @@
                         { map = "171707906", changeMap = "bottom" },
                         { map = "171707907", changeMap = "bottom" },
                         { map = "171707908", custom = clickMap },
-                        { map = "178784264", gather = true, custom = finDeBoucle },
+                        { map = "178784264", custom = TryGatherWithFDB },
                     })
                 end
             },
@@ -4419,29 +4429,29 @@
                         { map = "104072192", changeMap = "left" },
                         { map = "104071680", changeMap = "left" },
                         { map = "104071168", custom = clickMap },
-                        { map = "104860165", gather = true, changeMap = "444" },
+                        { map = "104860165", changeMap = "444", custom = TryGather },
                         { map = "104071168", changeMap = "top" },
                         { map = "104071425", custom = clickMap },
-                        { map = "104859139", gather = true, changeMap = "444" },
+                        { map = "104859139", changeMap = "444", custom = TryGather },
                         { map = "104071425", changeMap = "right" },
                         { map = "104071937", changeMap = "right" },
                         { map = "104072449", changeMap = "top" },
                         { map = "104072450", changeMap = "top" },
                         { map = "104072451", changeMap = "top" },
                         { map = "104072452", custom = clickMap },
-                        { map = "104858121", gather = true, changeMap = "348" },
-                        { map = "104860169", gather = true, changeMap = "263" },
-                        { map = "104861193", gather = true, changeMap = "248" },
-                        { map = "104862217", gather = true, changeMap = "369" },
-                        { map = "104861193", gather = true, changeMap = "254" },
-                        { map = "104859145", gather = true, changeMap = "457" },
-                        { map = "104858121", gather = true, changeMap = "507" },
+                        { map = "104858121", changeMap = "348", custom = TryGather },
+                        { map = "104860169", changeMap = "263", custom = TryGather },
+                        { map = "104861193", changeMap = "248", custom = TryGather },
+                        { map = "104862217", changeMap = "369", custom = TryGather },
+                        { map = "104861193", changeMap = "254", custom = TryGather },
+                        { map = "104859145", changeMap = "457", custom = TryGather },
+                        { map = "104858121", changeMap = "507", custom = TryGather },
                         { map = "104072452", changeMap = "bottom" },
                         { map = "104072451", changeMap = "bottom" },
                         { map = "104072450", changeMap = "bottom" },
                         { map = "104072449", changeMap = "bottom" },
                         { map = "104072192", changeMap = "left" },
-                        { map = "104071680", changeMap = "left", custom = bouclePlus },
+                        { map = "104071680", changeMap = "left", custom = TryGatherWithBP },
                     })
                 end
             },
@@ -4477,7 +4487,7 @@
                         { map = "147852288", changeMap = "bottom" },
                         { map = "147852289", changeMap = "bottom" },
                         { map = "147852290", custom = clickMap },
-                        { map = "149949440", gather = true, custom = finDeBoucle },
+                        { map = "149949440", custom = TryGatherWithFDB }
                     })
                 end
             },
@@ -4518,8 +4528,8 @@
                         { map = "172490758", changeMap = "right" },
                         { map = "172491270", changeMap = "right" },
                         { map = "172491782", custom = clickMap },
-                        { map = "178783240", gather = true, changeMap = "235" },
-                        { map = "178783242", gather = true, custom = finDeBoucle },
+                        { map = "178783240", changeMap = "235", custom = TryGather },
+                        { map = "178783242", custom = TryGatherWithFDB },
                     })
                 end
             }
@@ -5646,34 +5656,34 @@
                         { map = "88212750", changeMap = "left" },
                         { map = "88213262", changeMap = "left" },
                         { map = "88213774", changeMap = "354" },
-                        { map = "97259013", gather = true, changeMap = "258" },
-                        { map = "97260037", gather = true, changeMap = "352" },
+                        { map = "97259013", changeMap = "258", custom = TryGather },
+                        { map = "97260037", changeMap = "352", custom = TryGather },
                         { map = "97261061", changeMap = "284" },
-                        { map = "97255943", gather = true, changeMap = "403" },
-                        { map = "97261061", gather = true, changeMap = "458" },
-                        { map = "97260037", gather = true, changeMap = "430" },
-                        { map = "97259013", gather = true, changeMap = "276" },
-                        { map = "97256967", gather = true, changeMap = "194" },
-                        { map = "97260039", gather = true, changeMap = "262" },
+                        { map = "97255943", changeMap = "403", custom = TryGather },
+                        { map = "97261061", changeMap = "458", custom = TryGather },
+                        { map = "97260037", changeMap = "430", custom = TryGather },
+                        { map = "97259013", changeMap = "276", custom = TryGather },
+                        { map = "97256967", changeMap = "194", custom = TryGather },
+                        { map = "97260039", changeMap = "262", custom = TryGather },
                         { map = "97257993", changeMap = "122" },
-                        { map = "97261065", gather = true, changeMap = "236" },
-                        { map = "97259019", gather = true, changeMap = "276" },
-                        { map = "97260043", gather = true, changeMap = "451" },
-                        { map = "97259019", gather = true, changeMap = "438" },
-                        { map = "97261065", gather = true, changeMap = "213" },
-                        { map = "97255947", gather = true, changeMap = "199" },
-                        { map = "97256971", gather = true, changeMap = "239" },
-                        { map = "97257995", gather = true, changeMap = "374" },
-                        { map = "97256971", gather = true, changeMap = "503" },
-                        { map = "97255947", gather = true, changeMap = "500"},
-                        { map = "97261065", gather = true, changeMap = "479" },
+                        { map = "97261065", changeMap = "236", custom = TryGather },
+                        { map = "97259019", changeMap = "276", custom = TryGather },
+                        { map = "97260043", changeMap = "451", custom = TryGather },
+                        { map = "97259019", changeMap = "438", custom = TryGather },
+                        { map = "97261065", changeMap = "213", custom = TryGather },
+                        { map = "97255947", changeMap = "199", custom = TryGather },
+                        { map = "97256971", changeMap = "239", custom = TryGather },
+                        { map = "97257995", changeMap = "374", custom = TryGather },
+                        { map = "97256971", changeMap = "503", custom = TryGather },
+                        { map = "97255947", changeMap = "500", custom = TryGather },
+                        { map = "97261065", changeMap = "479", custom = TryGather },
                         { map = "97257993", changeMap = "537" },
-                        { map = "97260039", gather = true, changeMap = "241" },
-                        { map = "97261063", gather = true, changeMap = "296" },
-                        { map = "97255945", gather = true, changeMap = "416" },
-                        { map = "97261063", gather = true, changeMap = "459" },
-                        { map = "97260039", gather = true, changeMap = "451" },
-                        { map = "97256967", gather = true, changeMap = "518", custom = bouclePlus },
+                        { map = "97260039", changeMap = "241", custom = TryGather },
+                        { map = "97261063", changeMap = "296", custom = TryGather },
+                        { map = "97255945", changeMap = "416", custom = TryGather },
+                        { map = "97261063", changeMap = "459", custom = TryGather },
+                        { map = "97260039", changeMap = "451", custom = TryGather },
+                        { map = "97256967", changeMap = "518", custom = TryGatherWithBP },
                     })
                 end
             },
@@ -5705,10 +5715,10 @@
                         { map = "185862149", changeMap = "top" },
                         { map = "185862148", changeMap = "367" },
                         { map = "97255951", changeMap = "203" },
-                        { map = "97256975", gather = true, changeMap = "323" },
-                        { map = "97257999", gather = true, changeMap = "268" },
-                        { map = "97260047", gather = true, changeMap = "432" },
-                        { map = "97257999", gather = true, changeMap = "403", custom = bouclePlus },
+                        { map = "97256975", changeMap = "323", custom = TryGather },
+                        { map = "97257999", changeMap = "268", custom = TryGather },
+                        { map = "97260047", changeMap = "432", custom = TryGather },
+                        { map = "97257999", changeMap = "403", custom = TryGatherWithBP },
                     })
                 end
             },
@@ -5743,38 +5753,38 @@
                         { map = "88212750", changeMap = "left" },
                         { map = "88213262", changeMap = "left" },
                         { map = "88213774", changeMap = "354" },
-                        { map = "97259013", gather = true, changeMap = "258" },
-                        { map = "97260037", gather = true, changeMap = "352" },
-                        { map = "97261061", gather = true, changeMap = "284" },
-                        { map = "97255943", gather = true, changeMap = "403" },
-                        { map = "97261061", gather = true, changeMap = "290" },
-                        { map = "97259015", gather = true, changeMap = "451" },
-                        { map = "97261061", gather = true, changeMap = "458" },
-                        { map = "97260037", gather = true, changeMap = "303" },
-                        { map = "97257991", gather = true, changeMap = "464" },
-                        { map = "97260037", gather = true, changeMap = "430" },
-                        { map = "97259013", gather = true, changeMap = "276" },
-                        { map = "97256967", gather = true, changeMap = "194" },
-                        { map = "97260039", gather = true, changeMap = "262" },
+                        { map = "97259013", changeMap = "258", custom = TryGather },
+                        { map = "97260037", changeMap = "352", custom = TryGather },
+                        { map = "97261061", changeMap = "284", custom = TryGather },
+                        { map = "97255943", changeMap = "403", custom = TryGather },
+                        { map = "97261061", changeMap = "290", custom = TryGather },
+                        { map = "97259015", changeMap = "451", custom = TryGather },
+                        { map = "97261061", changeMap = "458", custom = TryGather },
+                        { map = "97260037", changeMap = "303", custom = TryGather },
+                        { map = "97257991", changeMap = "464", custom = TryGather },
+                        { map = "97260037", changeMap = "430", custom = TryGather },
+                        { map = "97259013", changeMap = "276", custom = TryGather },
+                        { map = "97256967", changeMap = "194", custom = TryGather },
+                        { map = "97260039", changeMap = "262", custom = TryGather },
                         { map = "97257993", changeMap = "122" },
-                        { map = "97261065", gather = true, changeMap = "236" },
-                        { map = "97259019", gather = true, changeMap = "276" },
-                        { map = "97260043", gather = true, changeMap = "451" },
-                        { map = "97259019", gather = true, changeMap = "438" },
-                        { map = "97261065", gather = true, changeMap = "213" },
-                        { map = "97255947", gather = true, changeMap = "199" },
-                        { map = "97256971", gather = true, changeMap = "239" },
-                        { map = "97257995", gather = true, changeMap = "374" },
-                        { map = "97256971", gather = true, changeMap = "503" },
-                        { map = "97255947", gather = true, changeMap = "500"},
-                        { map = "97261065", gather = true, changeMap = "479" },
+                        { map = "97261065", changeMap = "236", custom = TryGather },
+                        { map = "97259019", changeMap = "276", custom = TryGather },
+                        { map = "97260043", changeMap = "451", custom = TryGather },
+                        { map = "97259019", changeMap = "438", custom = TryGather },
+                        { map = "97261065", changeMap = "213", custom = TryGather },
+                        { map = "97255947", changeMap = "199", custom = TryGather },
+                        { map = "97256971", changeMap = "239", custom = TryGather },
+                        { map = "97257995", changeMap = "374", custom = TryGather },
+                        { map = "97256971", changeMap = "503", custom = TryGather },
+                        { map = "97255947", changeMap = "500", custom = TryGather },
+                        { map = "97261065", changeMap = "479", custom = TryGather },
                         { map = "97257993", changeMap = "537" },
-                        { map = "97260039", gather = true, changeMap = "241" },
-                        { map = "97261063", gather = true, changeMap = "296" },
-                        { map = "97255945", gather = true, changeMap = "416" },
-                        { map = "97261063", gather = true, changeMap = "459" },
-                        { map = "97260039", gather = true, changeMap = "451" },
-                        { map = "97256967", gather = true, changeMap = "518", custom = bouclePlus },
+                        { map = "97260039", changeMap = "241", custom = TryGather },
+                        { map = "97261063", changeMap = "296", custom = TryGather },
+                        { map = "97255945", changeMap = "416", custom = TryGather },
+                        { map = "97261063", changeMap = "459", custom = TryGather },
+                        { map = "97260039", changeMap = "451", custom = TryGather },
+                        { map = "97256967", changeMap = "518", custom = TryGatherWithBP },
                     })
                 end
             },
@@ -5802,21 +5812,21 @@
                         { map = "156240386", changeMap = "right" },
                         { map = "156240898", changeMap = "right" },
                         { map = "156241410", changeMap = "149" },
-                        { map = "133431302", gather = true, changeMap = "193" },
-                        { map = "133431300", gather = true, changeMap = "180" }, -- Reboucle
-                        { map = "133431298", gather = true, changeMap = "460" },
-                        { map = "133432322", gather = true, changeMap = "129" },
-                        { map = "133432320", gather = true, changeMap = "149" },
-                        { map = "133432578", gather = true, changeMap = "450" },
-                        { map = "133432320", gather = true, changeMap = "365" },
-                        { map = "133431296", gather = true, changeMap = "307" },
-                        { map = "133432320", gather = true, changeMap = "487" },
-                        { map = "133432322", gather = true, changeMap = "362" },
-                        { map = "133433346", gather = true, changeMap = "178" },
-                        { map = "133433344", gather = true, changeMap = "529" },
-                        { map = "133433346", gather = true, changeMap = "337" },
-                        { map = "133432322", gather = true, changeMap = "337" },
-                        { map = "133431298", gather = true, changeMap = "490", custom = bouclePlus },
+                        { map = "133431302", changeMap = "193", custom = TryGather },
+                        { map = "133431300", changeMap = "180", custom = TryGather }, -- Reboucle
+                        { map = "133431298", changeMap = "460", custom = TryGather },
+                        { map = "133432322", changeMap = "129", custom = TryGather },
+                        { map = "133432320", changeMap = "149", custom = TryGather },
+                        { map = "133432578", changeMap = "450", custom = TryGather },
+                        { map = "133432320", changeMap = "365", custom = TryGather },
+                        { map = "133431296", changeMap = "307", custom = TryGather },
+                        { map = "133432320", changeMap = "487", custom = TryGather },
+                        { map = "133432322", changeMap = "362", custom = TryGather },
+                        { map = "133433346", changeMap = "178", custom = TryGather },
+                        { map = "133433344", changeMap = "529", custom = TryGather },
+                        { map = "133433346", changeMap = "337", custom = TryGather },
+                        { map = "133432322", changeMap = "337", custom = TryGather },
+                        { map = "133431298", changeMap = "490", custom = TryGatherWithBP },
                     })
                 end
             },
@@ -5848,12 +5858,12 @@
                         { map = "185862149", changeMap = "top" },
                         { map = "185862148", changeMap = "367" },
                         { map = "97255951", changeMap = "203" },
-                        { map = "97256975", gather = true, changeMap = "323" },
-                        { map = "97257999", gather = true, changeMap = "268" },
-                        { map = "97260047", gather = true, changeMap = "379" },
-                        { map = "97261071", gather = true, changeMap = "248" },
-                        { map = "97260047", gather = true, changeMap = "432" },
-                        { map = "97257999", gather = true, changeMap = "403", custom = bouclePlus },
+                        { map = "97256975", changeMap = "323", custom = TryGather },
+                        { map = "97257999", changeMap = "268", custom = TryGather },
+                        { map = "97260047", changeMap = "379", custom = TryGather },
+                        { map = "97261071", changeMap = "248", custom = TryGather },
+                        { map = "97260047", changeMap = "432", custom = TryGather },
+                        { map = "97257999", changeMap = "403", custom = TryGatherWithBP },
                     })
                 end
             },
@@ -5887,40 +5897,40 @@
                         { map = "88212750", changeMap = "left" },
                         { map = "88213262", changeMap = "left" },
                         { map = "88213774", changeMap = "354" },
-                        { map = "97259013", gather = true, changeMap = "258" },
-                        { map = "97260037", gather = true, changeMap = "352" },
-                        { map = "97261061", gather = true, changeMap = "284" },
-                        { map = "97255943", gather = true, changeMap = "403" },
-                        { map = "97261061", gather = true, changeMap = "290" },
-                        { map = "97259015", gather = true, changeMap = "451" },
-                        { map = "97261061", gather = true, changeMap = "458" },
-                        { map = "97260037", gather = true, changeMap = "303" },
-                        { map = "97257991", gather = true, changeMap = "464" },
-                        { map = "97260037", gather = true, changeMap = "430" },
-                        { map = "97259013", gather = true, changeMap = "276" },
-                        { map = "97256967", gather = true, changeMap = "194" },
-                        { map = "97260039", gather = true, changeMap = "262" },
+                        { map = "97259013", changeMap = "258", custom = TryGather },
+                        { map = "97260037", changeMap = "352", custom = TryGather },
+                        { map = "97261061", changeMap = "284", custom = TryGather },
+                        { map = "97255943", changeMap = "403", custom = TryGather },
+                        { map = "97261061", changeMap = "290", custom = TryGather },
+                        { map = "97259015", changeMap = "451", custom = TryGather },
+                        { map = "97261061", changeMap = "458", custom = TryGather },
+                        { map = "97260037", changeMap = "303", custom = TryGather },
+                        { map = "97257991", changeMap = "464", custom = TryGather },
+                        { map = "97260037", changeMap = "430", custom = TryGather },
+                        { map = "97259013", changeMap = "276", custom = TryGather },
+                        { map = "97256967", changeMap = "194", custom = TryGather },
+                        { map = "97260039", changeMap = "262", custom = TryGather },
                         { map = "97257993", changeMap = "122" },
-                        { map = "97261065", gather = true, changeMap = "236" },
-                        { map = "97259019", gather = true, changeMap = "276" },
-                        { map = "97260043", gather = true, changeMap = "451" },
-                        { map = "97259019", gather = true, changeMap = "438" },
-                        { map = "97261065", gather = true, changeMap = "213" },
-                        { map = "97255947", gather = true, changeMap = "199" },
-                        { map = "97256971", gather = true, changeMap = "239" },
-                        { map = "97257995", gather = true, changeMap = "374" },
-                        { map = "97256971", gather = true, changeMap = "234" },
-                        { map = "97261067", gather = true, changeMap = "521" },
-                        { map = "97256971", gather = true, changeMap = "503" },
-                        { map = "97255947", gather = true, changeMap = "500" },
-                        { map = "97261065", gather = true, changeMap = "479" },
+                        { map = "97261065", changeMap = "236", custom = TryGather },
+                        { map = "97259019", changeMap = "276", custom = TryGather },
+                        { map = "97260043", changeMap = "451", custom = TryGather },
+                        { map = "97259019", changeMap = "438", custom = TryGather },
+                        { map = "97261065", changeMap = "213", custom = TryGather },
+                        { map = "97255947", changeMap = "199", custom = TryGather },
+                        { map = "97256971", changeMap = "239", custom = TryGather },
+                        { map = "97257995", changeMap = "374", custom = TryGather },
+                        { map = "97256971", changeMap = "234", custom = TryGather },
+                        { map = "97261067", changeMap = "521", custom = TryGather },
+                        { map = "97256971", changeMap = "503", custom = TryGather },
+                        { map = "97255947", changeMap = "500", custom = TryGather },
+                        { map = "97261065", changeMap = "479", custom = TryGather },
                         { map = "97257993", changeMap = "537" },
-                        { map = "97260039", gather = true, changeMap = "241" },
-                        { map = "97261063", gather = true, changeMap = "296" },
-                        { map = "97255945", gather = true, changeMap = "416" },
-                        { map = "97261063", gather = true, changeMap = "459" },
-                        { map = "97260039", gather = true, changeMap = "451" },
-                        { map = "97256967", gather = true, changeMap = "518", custom = bouclePlus },
+                        { map = "97260039", changeMap = "241", custom = TryGather },
+                        { map = "97261063", changeMap = "296", custom = TryGather },
+                        { map = "97255945", changeMap = "416", custom = TryGather },
+                        { map = "97261063", changeMap = "459", custom = TryGather },
+                        { map = "97260039", changeMap = "451", custom = TryGather },
+                        { map = "97256967", changeMap = "518", custom = TryGatherWithBP },
                     })
                 end
             },
@@ -5956,24 +5966,24 @@
                         { map = "173018117", changeMap = "left" },
                         { map = "173017605", changeMap = "493" },
                         { map = "173017606", changeMap = "268" },
-                        { map = "178782208", gather = true, custom = clickMap },
-                        { map = "178782210", gather = true, changeMap = "221" },
-                        { map = "178783234", gather = true, custom = clickMap },
-                        { map = "178783232", gather = true, changeMap = "204" },
-                        { map = "178784256", gather = true, changeMap = "476" },
-                        { map = "178783232", gather = true, changeMap = "213" },
-                        { map = "178783236", gather = true, changeMap = "138" },
-                        { map = "178784260", gather = true, changeMap = "406" },
-                        { map = "178783236", gather = true, changeMap = "323" },
-                        { map = "178782214", gather = true, changeMap = "507" },
+                        { map = "178782208", custom = TryGatherWithCM },
+                        { map = "178782210", changeMap = "221", custom = TryGather },
+                        { map = "178783234", custom = TryGatherWithCM },
+                        { map = "178783232", changeMap = "204", custom = TryGather },
+                        { map = "178784256", changeMap = "476", custom = TryGather },
+                        { map = "178783232", changeMap = "213", custom = TryGather },
+                        { map = "178783236", changeMap = "138", custom = TryGather },
+                        { map = "178784260", changeMap = "406", custom = TryGather },
+                        { map = "178783236", changeMap = "323", custom = TryGather },
+                        { map = "178782214", changeMap = "507", custom = TryGather },
                         { map = "178782216", changeMap = "450" },
-                        { map = "178782218", gather = true, changeMap = "518" },
-                        { map = "178782220", gather = true, changeMap = "57" },
-                        { map = "178782218", gather = true, custom = clickMap },
-                        { map = "178782216", gather = true, changeMap = "162" },
-                        { map = "178782214", gather = true, changeMap = "179" },
-                        { map = "178783236", gather = true, changeMap = "527" },
-                        { map = "178783232", gather = true, changeMap = "406", custom = bouclePlus },
+                        { map = "178782218", changeMap = "518", custom = TryGather },
+                        { map = "178782220", changeMap = "57", custom = TryGather },
+                        { map = "178782218", custom = TryGatherWithCM },
+                        { map = "178782216", changeMap = "162", custom = TryGather },
+                        { map = "178782214", changeMap = "179", custom = TryGather },
+                        { map = "178783236", changeMap = "527", custom = TryGather },
+                        { map = "178783232", changeMap = "406", custom = TryGatherWithBP },
                     })
                 end
             },
@@ -6005,14 +6015,14 @@
                         { map = "185862149", changeMap = "top" },
                         { map = "185862148", changeMap = "367" },
                         { map = "97255951", changeMap = "203" },
-                        { map = "97256975", gather = true, changeMap = "323" },
-                        { map = "97257999", gather = true, changeMap = "268" },
-                        { map = "97260047", gather = true, changeMap = "379" },
-                        { map = "97261071", gather = true, changeMap = "248" },
-                        { map = "97260047", gather = true, changeMap = "432" },
-                        { map = "97257999", gather = true, changeMap = "247" },
-                        { map = "97259023", gather = true, changeMap = "451" },
-                        { map = "97257999", gather = true, changeMap = "403", finDeBoucle },
+                        { map = "97256975", changeMap = "323", custom = TryGather },
+                        { map = "97257999", changeMap = "268", custom = TryGather },
+                        { map = "97260047", changeMap = "379", custom = TryGather },
+                        { map = "97261071", changeMap = "248", custom = TryGather },
+                        { map = "97260047", changeMap = "432", custom = TryGather },
+                        { map = "97257999", changeMap = "247", custom = TryGather },
+                        { map = "97259023", changeMap = "451", custom = TryGather },
+                        { map = "97257999", custom = TryGatherWithFDB },
                     })
                 end
             },
@@ -6046,44 +6056,44 @@
                         { map = "88212750", changeMap = "left" },
                         { map = "88213262", changeMap = "left" },
                         { map = "88213774", changeMap = "354" },
-                        { map = "97259013", gather = true, changeMap = "258" },
-                        { map = "97260037", gather = true, changeMap = "352" },
-                        { map = "97261061", gather = true, changeMap = "284" },
-                        { map = "97255943", gather = true, changeMap = "403" },
-                        { map = "97261061", gather = true, changeMap = "290" },
-                        { map = "97259015", gather = true, changeMap = "451" },
-                        { map = "97261061", gather = true, changeMap = "458" },
-                        { map = "97260037", gather = true, changeMap = "303" },
-                        { map = "97257991", gather = true, changeMap = "464" },
-                        { map = "97260037", gather = true, changeMap = "430" },
-                        { map = "97259013", gather = true, changeMap = "276" },
-                        { map = "97256967", gather = true, changeMap = "194" },
-                        { map = "97260039", gather = true, changeMap = "262" },
+                        { map = "97259013", changeMap = "258", custom = TryGather },
+                        { map = "97260037", changeMap = "352", custom = TryGather },
+                        { map = "97261061", changeMap = "284", custom = TryGather },
+                        { map = "97255943", changeMap = "403", custom = TryGather },
+                        { map = "97261061", changeMap = "290", custom = TryGather },
+                        { map = "97259015", changeMap = "451", custom = TryGather },
+                        { map = "97261061", changeMap = "458", custom = TryGather },
+                        { map = "97260037", changeMap = "303", custom = TryGather },
+                        { map = "97257991", changeMap = "464", custom = TryGather },
+                        { map = "97260037", changeMap = "430", custom = TryGather },
+                        { map = "97259013", changeMap = "276", custom = TryGather },
+                        { map = "97256967", changeMap = "194", custom = TryGather },
+                        { map = "97260039", changeMap = "262", custom = TryGather },
                         { map = "97257993", changeMap = "122" },
-                        { map = "97261065", gather = true, changeMap = "236" },
-                        { map = "97259019", gather = true, changeMap = "276" },
-                        { map = "97260043", gather = true, changeMap = "451" },
-                        { map = "97259019", gather = true, changeMap = "438" },
-                        { map = "97261065", gather = true, changeMap = "213" },
-                        { map = "97255947", gather = true, changeMap = "199" },
-                        { map = "97256971", gather = true, changeMap = "239" },
-                        { map = "97257995", gather = true, changeMap = "374" },
-                        { map = "97256971", gather = true, changeMap = "234" },
-                        { map = "97261067", gather = true, changeMap = "521" },
-                        { map = "97256971", gather = true, changeMap = "503" },
-                        { map = "97255947", gather = true, changeMap = "500" },
-                        { map = "97261065", gather = true, changeMap = "479" },
+                        { map = "97261065", changeMap = "236", custom = TryGather },
+                        { map = "97259019", changeMap = "276", custom = TryGather },
+                        { map = "97260043", changeMap = "451", custom = TryGather },
+                        { map = "97259019", changeMap = "438", custom = TryGather },
+                        { map = "97261065", changeMap = "213", custom = TryGather },
+                        { map = "97255947", changeMap = "199", custom = TryGather },
+                        { map = "97256971", changeMap = "239", custom = TryGather },
+                        { map = "97257995", changeMap = "374", custom = TryGather },
+                        { map = "97256971", changeMap = "234", custom = TryGather },
+                        { map = "97261067", changeMap = "521", custom = TryGather },
+                        { map = "97256971", changeMap = "503", custom = TryGather },
+                        { map = "97255947", changeMap = "500", custom = TryGather },
+                        { map = "97261065", changeMap = "479", custom = TryGather },
                         { map = "97257993", changeMap = "537" },
-                        { map = "97260039", gather = true, changeMap = "241" },
-                        { map = "97261063", gather = true, changeMap = "296" },
-                        { map = "97255945", gather = true, changeMap = "332" },
-                        { map = "97260041", gather = true, changeMap = "354" },
-                        { map = "97255945", gather = true, changeMap = "416" },
-                        { map = "97261063", gather = true, changeMap = "331" },
-                        { map = "97259017", gather = true, changeMap = "436" },
-                        { map = "97261063", gather = true, changeMap = "459" },
-                        { map = "97260039", gather = true, changeMap = "451" },
-                        { map = "97256967", gather = true, changeMap = "518", custom = bouclePlus },
+                        { map = "97260039", changeMap = "241", custom = TryGather },
+                        { map = "97261063", changeMap = "296", custom = TryGather },
+                        { map = "97255945", changeMap = "332", custom = TryGather },
+                        { map = "97260041", changeMap = "354", custom = TryGather},
+                        { map = "97255945", changeMap = "416", custom = TryGather },
+                        { map = "97261063", changeMap = "331", custom = TryGather },
+                        { map = "97259017", changeMap = "436", custom = TryGather },
+                        { map = "97261063", changeMap = "459", custom = TryGather },
+                        { map = "97260039", changeMap = "451", custom = TryGather },
+                        { map = "97256967", changeMap = "518", custom = TryGatherWithBP },
                     })
                 end
             },
@@ -6118,16 +6128,16 @@
                         { map = "88083203", changeMap = "top" },
                         { map = "88083204", changeMap = "left" },
                         { map = "88082692", changeMap = "332" },
-                        { map = "97260033", gather = true, changeMap = "183" },
-                        { map = "97261059", gather = true, changeMap = "417" },
-                        { map = "97260033", gather = true, changeMap = "405" },
-                        { map = "97261057", gather = true, changeMap = "235" },
-                        { map = "97255939", gather = true, changeMap = "446" },
-                        { map = "97256963", gather = true, changeMap = "492" },
-                        { map = "97257987", gather = true, changeMap = "212" },
-                        { map = "97261057", gather = true, changeMap = "421" },
-                        { map = "97259011", gather = true, changeMap = "276" },
-                        { map = "97261057", gather = true, changeMap = "227", custom = bouclePlus },
+                        { map = "97260033", changeMap = "183", custom = TryGather },
+                        { map = "97261059", changeMap = "417", custom = TryGather },
+                        { map = "97260033", changeMap = "405", custom = TryGather },
+                        { map = "97261057", changeMap = "235", custom = TryGather },
+                        { map = "97255939", changeMap = "446", custom = TryGather },
+                        { map = "97256963", changeMap = "492", custom = TryGather },
+                        { map = "97257987", changeMap = "212" },
+                        { map = "97261057", changeMap = "421", custom = TryGather },
+                        { map = "97259011", changeMap = "276", custom = TryGather },
+                        { map = "97261057", changeMap = "227", custom = TryGatherWithBP },
                     })
                 end
             },
@@ -6162,46 +6172,46 @@
                         { map = "88212750", changeMap = "left" },
                         { map = "88213262", changeMap = "left" },
                         { map = "88213774", changeMap = "354" },
-                        { map = "97259013", gather = true, changeMap = "258" },
-                        { map = "97260037", gather = true, changeMap = "352" },
-                        { map = "97261061", gather = true, changeMap = "284" },
-                        { map = "97255943", gather = true, changeMap = "403" },
-                        { map = "97261061", gather = true, changeMap = "290" },
-                        { map = "97259015", gather = true, changeMap = "451" },
-                        { map = "97261061", gather = true, changeMap = "458" },
-                        { map = "97260037", gather = true, changeMap = "303" },
-                        { map = "97257991", gather = true, changeMap = "464" },
-                        { map = "97260037", gather = true, changeMap = "430" },
-                        { map = "97259013", gather = true, changeMap = "276" },
-                        { map = "97256967", gather = true, changeMap = "194" },
-                        { map = "97260039", gather = true, changeMap = "262" },
-                        { map = "97257993", gather = true, changeMap = "122" },
-                        { map = "97261065", gather = true, changeMap = "236" },
-                        { map = "97259019", gather = true, changeMap = "276" },
-                        { map = "97260043", gather = true, changeMap = "451" },
-                        { map = "97259019", gather = true, changeMap = "438" },
-                        { map = "97261065", gather = true, changeMap = "213" },
-                        { map = "97255947", gather = true, changeMap = "199" },
-                        { map = "97256971", gather = true, changeMap = "239" },
-                        { map = "97257995", gather = true, changeMap = "374" },
-                        { map = "97256971", gather = true, changeMap = "234" },
-                        { map = "97261067", gather = true, changeMap = "521" },
-                        { map = "97256971", gather = true, changeMap = "503" },
-                        { map = "97255947", gather = true, changeMap = "500" },
-                        { map = "97261065", gather = true, changeMap = "479" },
-                        { map = "97257993", gather = true, changeMap = "537" },
-                        { map = "97260039", gather = true, changeMap = "241" },
-                        { map = "97261063", gather = true, changeMap = "296" },
-                        { map = "97255945", gather = true, changeMap = "213" },
-                        { map = "97256969", gather = true, changeMap = "401" },
-                        { map = "97255945", gather = true, changeMap = "332" },
-                        { map = "97260041", gather = true, changeMap = "354" },
-                        { map = "97255945", gather = true, changeMap = "416" },
-                        { map = "97261063", gather = true, changeMap = "331" },
-                        { map = "97259017", gather = true, changeMap = "436" },
-                        { map = "97261063", gather = true, changeMap = "459" },
-                        { map = "97260039", gather = true, changeMap = "451" },
-                        { map = "97256967", gather = true, changeMap = "518", custom = bouclePlus },
+                        { map = "97259013", changeMap = "258", custom = TryGather },
+                        { map = "97260037", changeMap = "352", custom = TryGather },
+                        { map = "97261061", changeMap = "284", custom = TryGather },
+                        { map = "97255943", changeMap = "403", custom = TryGather },
+                        { map = "97261061", changeMap = "290", custom = TryGather },
+                        { map = "97259015", changeMap = "451", custom = TryGather },
+                        { map = "97261061", changeMap = "458", custom = TryGather },
+                        { map = "97260037", changeMap = "303", custom = TryGather },
+                        { map = "97257991", changeMap = "464", custom = TryGather },
+                        { map = "97260037", changeMap = "430", custom = TryGather },
+                        { map = "97259013", changeMap = "276", custom = TryGather },
+                        { map = "97256967", changeMap = "194", custom = TryGather },
+                        { map = "97260039", changeMap = "262", custom = TryGather },
+                        { map = "97257993", changeMap = "122", custom = TryGather },
+                        { map = "97261065", changeMap = "236", custom = TryGather },
+                        { map = "97259019", changeMap = "276", custom = TryGather },
+                        { map = "97260043", changeMap = "451", custom = TryGather},
+                        { map = "97259019", changeMap = "438", custom = TryGather },
+                        { map = "97261065", changeMap = "213", custom = TryGather },
+                        { map = "97255947", changeMap = "199", custom = TryGather },
+                        { map = "97256971", changeMap = "239", custom = TryGather },
+                        { map = "97257995", changeMap = "374", custom = TryGather },
+                        { map = "97256971", changeMap = "234", custom = TryGather },
+                        { map = "97261067", changeMap = "521", custom = TryGather },
+                        { map = "97256971", changeMap = "503", custom = TryGather },
+                        { map = "97255947", changeMap = "500", custom = TryGather },
+                        { map = "97261065", changeMap = "479", custom = TryGather },
+                        { map = "97257993", changeMap = "537", custom = TryGather },
+                        { map = "97260039", changeMap = "241", custom = TryGather },
+                        { map = "97261063", changeMap = "296", custom = TryGather },
+                        { map = "97255945", changeMap = "213", custom = TryGather },
+                        { map = "97256969", changeMap = "401", custom = TryGather },
+                        { map = "97255945", changeMap = "332", custom = TryGather },
+                        { map = "97260041", changeMap = "354", custom = TryGather },
+                        { map = "97255945", changeMap = "416", custom = TryGather },
+                        { map = "97261063", changeMap = "331", custom = TryGather },
+                        { map = "97259017", changeMap = "436", custom = TryGather },
+                        { map = "97261063", changeMap = "459", custom = TryGather },
+                        { map = "97260039", changeMap = "451", custom = TryGather },
+                        { map = "97256967", changeMap = "518", custom = TryGatherWithBP },
                     })
                 end
             },
@@ -6237,18 +6247,18 @@
 				        { map = "88083203", changeMap = "top" },
 				        { map = "88083204", changeMap = "left" },
 				        { map = "88082692", changeMap = "332" },
-				        { map = "97260033", gather = true, changeMap = "405" },
-				        { map = "97261057", gather = true, changeMap = "421" },
-				        { map = "97259011", gather = true, changeMap = "276" },
-				        { map = "97261057", gather = true, changeMap = "235" },
-				        { map = "97255939", gather = true, changeMap = "446" },
-                        { map = "97256963", gather = true, changeMap = "492" },
+				        { map = "97260033", changeMap = "405", custom = TryGather },
+				        { map = "97261057", changeMap = "421", custom = TryGather },
+				        { map = "97259011", changeMap = "276", custom = TryGather },
+				        { map = "97261057", changeMap = "235", custom = TryGather },
+				        { map = "97255939", changeMap = "446", custom = TryGather },
+                        { map = "97256963", changeMap = "492", custom = TryGather },
                         { map = "97257987", changeMap = "492" },
-				        { map = "97260035", gather = true, changeMap = "288" },
+				        { map = "97260035", changeMap = "288", custom = TryGather },
                         { map = "97257987", changeMap = "212" },
-				        { map = "97261057", gather = true, changeMap = "227" },
-				        { map = "97260033", gather = true, changeMap = "183" },
-				        { map = "97261059", gather = true, changeMap = "417", custom = bouclePlus },
+				        { map = "97261057", changeMap = "227", custom = TryGather },
+				        { map = "97260033", changeMap = "183", custom = TryGather },
+				        { map = "97261059", changeMap = "417", custom = TryGatherWithBP },
                     })
                 end
             },
@@ -6991,8 +7001,11 @@
         end
     }
 
+    local tblIndexAddedPath = {}
+
+
 function equipItem()
-    global:printMessage("equipItem()")
+    --global:printMessage("equipItem()")
 end
 
 function maison()
@@ -7105,10 +7118,6 @@ function move()
         resetInfiniteLoop()
     end
 
-    if not goCraft and checkRessource then
-        checkBag()
-    end
-
     if not checkRessource then
         if DEPOT_MAISON then
             if not teleported then
@@ -7198,6 +7207,10 @@ function gatherMode()
         filterPath()
     end
 
+    if not goCraft and AUTO_OPEN_BAG then
+        checkBag()
+    end
+
     if timeZoneMode then
         timeZone()
         jobTime = diffTime
@@ -7211,6 +7224,10 @@ function gatherMode()
 
     if jobTime >= tbLimit then
         global:printMessage("[INFO]["..string.upper(currentJob).."] Changement de zone !")
+        if lastTotalGather ~= totalGather then
+            lastTotalGather = totalGather
+            global:printMessage("[INFO]["..string.upper(currentJob).."] Vous avez fait au minimum " ..totalGather.. " recolte")
+        end
         finDeBoucle()
     end
     
@@ -7267,13 +7284,9 @@ function fightMode()
     FIGHT_FILTERED[pathIndex].EQUIP_ITEM()
 
 	if map:subArea() == ZoneToFarm then
-    	return {
-			{map = map:currentMapId(), custom = TryFight},
-    	}
+        return{ {map = map:currentMapId(), custom = TryFight} }
     else
-    	return {
-    		{map = map:currentMapId(), custom = GoBack},
-    	}
+    	return { {map = map:currentMapId(), custom = GoBack} }
 	end
 end
 
@@ -7355,28 +7368,41 @@ function setPath(tbl)
 end
 
 function filterPath()
+    global:printMessage("[INFO]["..string.upper(currentJob).. "] Filtrage des PATH a farm")
     killDoubleValue(TO_FARM)
-    local goBreak
-    local indexTmp = {}
+    printSimpleTable(TO_FARM)
     PATH_FILTERED = {}
+    tblIndexAddedPath = {}
     while true do
-        if #TO_FARM > 1 then
-            for index, vFarm in pairs(TO_FARM) do
-                for kJobPath, vJobPath in pairs(PATH_JOB) do
-                    if kJobPath == currentJob then
-                        for iPath, vPath in pairs(vJobPath) do
-                            local insert = false
-                            for _, vTag in pairs(vPath.tags) do
-                                if vTag == vFarm then
-                                    insert = true
-                                    break
+        if #TO_FARM > 0 then
+            for kJob, vTable in pairs(PATH_JOB) do
+                local match = false
+                if kJob == currentJob then
+                    match = true
+                    for _, vTag in pairs(TO_FARM) do
+                        --global:printMessage("vTag : "..vTag.. ' lenght : '..#TO_FARM)
+                        for iPath, vPath in pairs(vTable) do
+                            if not alreadyAdded(iPath) then
+                                --global:printMessage("Looking for add "..vPath.name)
+                                local goBreak = false
+                                for _, vTagPath in pairs(vPath.tags) do
+                                    if goBreak then
+                                        break
+                                    end
+                                    if vTag == vTagPath then
+                                        table.insert(tblIndexAddedPath, iPath)
+                                        table.insert(PATH_FILTERED, vPath)
+                                        --global:printMessage(vPath.name.." added vTag : "..vTag.." vTagPath : "..vTagPath)
+                                        goBreak = true
+                                        break                                                               
+                                    end
                                 end
-                            end
-                            if insert then
-                                table.insert(PATH_FILTERED, vPath)
                             end
                         end
                     end
+                end
+                if match then
+                    break
                 end
             end
         end
@@ -7397,6 +7423,17 @@ function filterPath()
     filterPathByTags = true
 end
 
+function alreadyAdded(index)
+    if #tblIndexAddedPath > 0 then
+        for _, v in pairs(tblIndexAddedPath) do
+            if v == index then
+                return true
+            end
+        end
+    end
+    return false
+end
+
 function checkStock()
     local levelJob = job:level(currentIdJob)
     if GATHER_ALL_RESOURCES_OF_JOB then
@@ -7413,6 +7450,7 @@ function checkStock()
         end
     else
         killDoubleValue(TO_FARM)
+        --global:printMessage("check stock lenght : "..#TO_FARM)
         for keyTable, vTable in pairs(ITEM) do
             if keyTable == currentJob then
                 for _, vItem in pairs(vTable) do
@@ -7439,6 +7477,7 @@ function checkStock()
         end
         setETG()
     end
+    --global:printMessage("check stock lenght : "..#TO_FARM)
     lastItag = 0
     unsetETG()
     pathReplace()
@@ -7602,7 +7641,7 @@ function sortCraft()
                         global:printMessage("[INFO]["..string.upper(currentJob).."] Desactivation du craft " ..vCraft.name.. " lvlToDesactive atteint")
                         vCraft.active = false
                     else
-                        if levelJob >= vCraft.minLevel then
+                        if levelJob >= vCraft.minLevel and vCraft.active then
                             global:printMessage("[INFO]["..string.upper(currentJob).."] Ajout du craft " ..vCraft.name.. " a la table de craft")
                             vCraft.waitItemOfAnotherJob = false
                             table.insert(CRAFT_FILTERED, vCraft)
@@ -7678,7 +7717,7 @@ function inCoffre() -- Verifie si des craft son disponible si aucun craft dispo 
         ELEMENTS_TO_GATHER = {}
         setItem()
     --Vérif si craft disponible et assignation des path si aucun craft disponible
-        if AUTO_CRAFT then
+        if AUTO_CRAFT and currentMode ~= 'fight' then
             local countTryCraft = 0
 
             for iCraft, vCraft in pairs(CRAFT_FILTERED) do
@@ -7730,12 +7769,11 @@ function inCoffre() -- Verifie si des craft son disponible si aucun craft dispo 
                         for iIngredient, vIngredient in ipairs(vCraft.ingredient) do
                             if goCraft then -- PickItem si craft disponible
                                 getItem(vIngredient.idItem, tblIngredient[iIngredient])
-                            else -- Sinon Ajout a la table de recolte  
+                            elseif tblIngredient[iIngredient] == 0 then -- Sinon Ajout a la table de recolte  
                                 missingIngredient(vCraft, vIngredient, iIngredient)
                             end
                         end                                        
                     end
-                    table.insert(TESTED_CRAFT, vCraft)
                     lastIcraft = iCraft
                     --global:printMessage('remove '..CRAFT_FILTERED[iCraft].name)
                     if #TO_FARM > 0 then
@@ -8459,6 +8497,40 @@ function craft() -- clickPosition dans les atelier
     checkRessource = false
     teleported = false
     havreSac()
+end
+
+function mainGather()
+    for i = 1 , gatherAttemptByMap do
+        local g = gather()
+        --global:printMessage("Tentative gather : "..i)
+        gatherCount(g)
+        global:delay(delayToRetryGather)
+    end
+end
+
+function TryGather()
+    mainGather()
+end
+
+function TryGatherWithBP()
+    mainGather()
+    bouclePlus()
+end
+
+function TryGatherWithFDB()
+    mainGather()
+    finDeBoucle()
+end
+
+function TryGatherWithCM()
+    mainGather()
+    clickMap()
+end
+
+function gatherCount(isGather)
+    if not isGather then
+        totalGather = totalGather + 1
+    end
 end
 
 -- TOM LA VACHETTE FUNCTION
