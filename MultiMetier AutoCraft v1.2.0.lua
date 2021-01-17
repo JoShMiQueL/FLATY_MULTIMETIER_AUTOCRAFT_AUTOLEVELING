@@ -4,7 +4,7 @@
     local AUTO_OPEN_BAG = true -- Active ou desactive l'ouverture auto des sac de ressources
     local AUTO_CRAFT = true -- Active ou desactive l'automatisation des craft
     local DEPOT_MAISON = false -- Pour activer le retourMaison mettre sur true et modifier les fonctions retourMaison et maison ligne 444 et 467
-    local GATHER_ALL_RESOURCES_OF_JOB = true -- Si true recolte toutes les ressources du metier actuelle, sinon c'est en fonction des parametre de SELECT_OPTIONS_STOCK_ITEM 
+    local GATHER_ALL_RESOURCES_OF_JOB = false -- Si true recolte toutes les ressources du metier actuelle, sinon c'est en fonction des parametre de SELECT_OPTIONS_STOCK_ITEM 
     local PNJ_BANK = "left" -- right/left choisi le pnj dans la banque d'astrub left hiboux blanc, right hiboux noir
 
     local FRIGOST1 = false -- A activer si vous avez fait les donjon RM/MR (débloque la mine maksage + les 2 mines a sakai)
@@ -46,7 +46,7 @@
     local heure, minute, lastMinute = nil, nil, 100
     local initTime, diffTime, lastGoodTime, tmpTime = 0, 0, 0, 0
     local initScript, oneHourPassed, timeInit = false, false, false
-    local teleported, checkRessource, goCheckStock, goCraft, messageBank = false, false, false, false, false
+    local teleported, checkRessource, goCheckStock, goCraft, goDrop, messageBank = false, false, false, false, false, false
     local currentJob, currentIdJob, currentMapId, currentMode, lastCurrentMode, toolCraft, pathIndex, lastNameZone, beforeLastNameZone, tbLimit = nil, nil, nil, nil, nil, nil, nil, nil, nil
     local iBoucleCraft, currentLevelCharacter, startLevelCharacter = 0, 0, 0
     local tmpAutoCraft, started, resetLoop = false, false, false
@@ -54,9 +54,7 @@
     local totalXp, totalFight, lastXpGain = 0, 0, 0
     local lastItag, lastIcraft=  0, 0
     local totalGather, lastTotalGather = 0, 0
-
-
-
+    local tmpGatherAll = nil
 -- Lmoony VAR
 
     local Directions = {
@@ -66,8 +64,7 @@
 	    bottom = "bottom",
     }
 
-    local G_countFights = 0
-    local G_dir
+    local G_dir, lastPos, lastDir
     local A1, A2 = 727595, 798405  -- 5^17=D20*A1+A2
     local D20, D40 = 1048576, 1099511627776  -- 2^20, 2^40
     local X1, X2 = 0, 1
@@ -87,10 +84,12 @@
     local TESTED_CRAFT = {}
 
 	local WORKTIME = {
+
 		{
 			job = "mineur",
 			debut = "01:24",
-			fin = "04:59"
+			fin = "04:59",
+            forceGatherAllRessourcesOfJob = true
 		},
 		{
 			job = "alchimiste",
@@ -105,7 +104,8 @@
 		{
 			job = "mineur",
 			debut = "10:23",
-			fin = "13:10"
+			fin = "13:10",
+            forceGatherAllRessourcesOfJob = true
 		},
 		{
 			job = "alchimiste",
@@ -120,7 +120,8 @@
 		{
 			job = "mineur",
 			debut = "17:42",
-			fin = "19:00"
+			fin = "19:00",
+            forceGatherAllRessourcesOfJob = true
 		},
 		{
 			job = "alchimiste",
@@ -132,7 +133,6 @@
 			debut = "22:26",
 			fin = "01:24"
 		},
-
 	}
 
     local CRAFT = {
@@ -1059,6 +1059,15 @@
                     { name = "Potion de souvenir", nbIng = 1, idItem = 7652 }
                 }
             }
+        },
+        ["bijoutier"] = {
+
+        },
+        ["coordonier"] = {
+
+        },
+        ["tailleur"] = {
+
         }
     }
 
@@ -1078,31 +1087,31 @@
             ["Frostiz"] = { name = "Frostiz", id = 11109, current = 0, lvlToFarm = 200, minStock = nil, maxStock = 3000, forceFarm = false, gatherId = 134, job = "paysan" },
         },
         ["alchimiste"] = {
-            ["Ortie"] = { name = "Ortie", id = 421, current = 0, lvlToFarm = 1, minStock = nil, maxStock = 3000, forceFarm = false, gatherId = 254, job = "alchimiste" },
-            ["Sauge"] = { name = "Sauge", id = 428, current = 0, lvlToFarm = 20, minStock = nil, maxStock = 3000, forceFarm = false, gatherId = 255, job = "alchimiste" },
-            ["Trefle"] = { name = "Trefle a 5 feuille", id = 395, current = 0, lvlToFarm = 40, minStock = nil, maxStock = 3000, forceFarm = false, gatherId = 67, job = "alchimiste" },
-            ["MentheSauvage"] = { name = "Menthe sauvage", id = 380, current = 0, lvlToFarm = 60, minStock = nil, maxStock = 3000, forceFarm = false, gatherId = 66, job = "alchimiste" },
-            ["Orchidee"] = { name = "Orchidee freyesque", id = 593, current = 0, lvlToFarm = 80, minStock = nil, maxStock = 3000, forceFarm = false, gatherId = 68, job = "alchimiste" },
-            ["Edelweiss"] = { name = "Edelweiss", id = 594, current = 0, lvlToFarm = 100, minStock = nil, maxStock = 3000, forceFarm = false, gatherId = 61, job = "alchimiste" },
-            ["GraineDePandouille"] = { name = "Graine de pandouille", id = 7059, current = 0, lvlToFarm = 120, minStock = nil, maxStock = 3000, forceFarm = false, gatherId = 112, job = "alchimiste" },
-            ["Ginseng"] = { name = "Ginseng", id = 16385, current = 0, lvlToFarm = 140, minStock = nil, maxStock = 3000, forceFarm = false, gatherId = 256, job = "alchimiste" },
-            ["Belladone"] = { name = "Belladone", id = 16387, current = 0, lvlToFarm = 160, minStock = nil, maxStock = 3000, forceFarm = false, gatherId = 257, job = "alchimiste" },
-            ["Mandragore"] = { name = "Mandragore", id = 16389, current = 0, lvlToFarm = 180, minStock = nil, maxStock = 3000, forceFarm = false, gatherId = 258, job = "alchimiste" },
-            ["PerceNeige"] = { name = "PerceNeige", id = 11102, current = 0, lvlToFarm = 200, minStock = nil, maxStock = 3000, forceFarm = false, gatherId = 131, job = "alchimiste" },
+            ["Ortie"] = { name = "Ortie", id = 421, current = 0, lvlToFarm = 1, minStock = nil, maxStock = 20000, forceFarm = false, gatherId = 254, job = "alchimiste" },
+            ["Sauge"] = { name = "Sauge", id = 428, current = 0, lvlToFarm = 20, minStock = nil, maxStock = 20000, forceFarm = false, gatherId = 255, job = "alchimiste" },
+            ["Trefle"] = { name = "Trefle a 5 feuille", id = 395, current = 0, lvlToFarm = 40, minStock = nil, maxStock = 20000, forceFarm = false, gatherId = 67, job = "alchimiste" },
+            ["MentheSauvage"] = { name = "Menthe sauvage", id = 380, current = 0, lvlToFarm = 60, minStock = nil, maxStock = 20000, forceFarm = false, gatherId = 66, job = "alchimiste" },
+            ["Orchidee"] = { name = "Orchidee freyesque", id = 593, current = 0, lvlToFarm = 80, minStock = nil, maxStock = 20000, forceFarm = false, gatherId = 68, job = "alchimiste" },
+            ["Edelweiss"] = { name = "Edelweiss", id = 594, current = 0, lvlToFarm = 100, minStock = nil, maxStock = 20000, forceFarm = false, gatherId = 61, job = "alchimiste" },
+            ["GraineDePandouille"] = { name = "Graine de pandouille", id = 7059, current = 0, lvlToFarm = 120, minStock = nil, maxStock = 20000, forceFarm = false, gatherId = 112, job = "alchimiste" },
+            ["Ginseng"] = { name = "Ginseng", id = 16385, current = 0, lvlToFarm = 140, minStock = nil, maxStock = 20000, forceFarm = false, gatherId = 256, job = "alchimiste" },
+            ["Belladone"] = { name = "Belladone", id = 16387, current = 0, lvlToFarm = 160, minStock = nil, maxStock = 20000, forceFarm = false, gatherId = 257, job = "alchimiste" },
+            ["Mandragore"] = { name = "Mandragore", id = 16389, current = 0, lvlToFarm = 180, minStock = nil, maxStock = 20000, forceFarm = false, gatherId = 258, job = "alchimiste" },
+            ["PerceNeige"] = { name = "PerceNeige", id = 11102, current = 0, lvlToFarm = 200, minStock = nil, maxStock = 20000, forceFarm = false, gatherId = 131, job = "alchimiste" },
         },
         ["mineur"] = {
-            ["Fer"] = { name = "Fer", id = 312, current = 0, lvlToFarm = 1, minStock = nil, maxStock = 3000, forceFarm = false, gatherId = 17, job = "mineur" },
-            ["Cuivre"] = { name = "Cuivre", id = 441, current = 0, lvlToFarm = 20, minStock = nil, maxStock = 3000, forceFarm = false, gatherId = 53, job = "mineur" },
+            ["Fer"] = { name = "Fer", id = 312, current = 0, lvlToFarm = 1, minStock = nil, maxStock = 20000, forceFarm = false, gatherId = 17, job = "mineur" },
+            ["Cuivre"] = { name = "Cuivre", id = 441, current = 0, lvlToFarm = 20, minStock = nil, maxStock = 20000, forceFarm = false, gatherId = 53, job = "mineur" },
             ["Bronze"] = { name = "Bronze", id = 442, current = 0, lvlToFarm = 40, minStock = nil, maxStock = nil, forceFarm = false, gatherId = 55, job = "mineur" },
-            ["Kobalte"] = { name = "Kobalte", id = 443, current = 0, lvlToFarm = 60, minStock = nil, maxStock = 3000, forceFarm = false, gatherId = 37, job = "mineur" },
+            ["Kobalte"] = { name = "Kobalte", id = 443, current = 0, lvlToFarm = 60, minStock = nil, maxStock = 20000, forceFarm = false, gatherId = 37, job = "mineur" },
             ["Manganese"] = { name = "Manganese", id = 445, current = 0, lvlToFarm = 80, minStock = nil, maxStock = nil, forceFarm = false, gatherId = 54, job = "mineur" },
-            ["Etain"] = { name = "Etain", id = 444, current = 0, lvlToFarm = 100, minStock = nil, maxStock = 3000, forceFarm = false, gatherId = 52, job = "mineur" },
-            ["Silicate"] = { name = "Silicate", id = 7032, current = 0, lvlToFarm = 100, minStock = nil, maxStock = 3000, forceFarm = false, gatherId = 114, job = "mineur" },
-            ["Argent"] = { name = "Argent", id = 350, current = 0 , lvlToFarm = 120, minStock = nil, maxStock = 3000, forceFarm = false, gatherId = 24, job = "mineur" },
-            ["Bauxite"] = { name = "Bauxite", id = 446, current = 0, lvlToFarm = 140, minStock = nil, maxStock = 3000, forceFarm = false, gatherId = 26, job = "mineur" },
-            ["Or"] = { name = "Or", id = 313, current = 0, lvlToFarm = 160, minStock = nil, maxStock = 3000, forceFarm = false, gatherId = 25, job = "mineur" },
-            ["Dolomite"] = { name = "Dolomite", id = 7033, current = 0, lvlToFarm = 180, minStock = nil, maxStock = 3000, forceFarm = false, gatherId = 113, job = "mineur" },
-            ["Obsidienne"] = { name = "Obsidienne", id = 11110, current = 0, lvlToFarm = 200, minStock = nil, maxStock = 3000, forceFarm = false, gatherId = 135, job = "mineur" },
+            ["Etain"] = { name = "Etain", id = 444, current = 0, lvlToFarm = 100, minStock = nil, maxStock = 20000, forceFarm = false, gatherId = 52, job = "mineur" },
+            ["Silicate"] = { name = "Silicate", id = 7032, current = 0, lvlToFarm = 100, minStock = nil, maxStock = 20000, forceFarm = false, gatherId = 114, job = "mineur" },
+            ["Argent"] = { name = "Argent", id = 350, current = 0 , lvlToFarm = 120, minStock = nil, maxStock = 20000, forceFarm = false, gatherId = 24, job = "mineur" },
+            ["Bauxite"] = { name = "Bauxite", id = 446, current = 0, lvlToFarm = 140, minStock = nil, maxStock = 20000, forceFarm = false, gatherId = 26, job = "mineur" },
+            ["Or"] = { name = "Or", id = 313, current = 0, lvlToFarm = 160, minStock = nil, maxStock = 20000, forceFarm = false, gatherId = 25, job = "mineur" },
+            ["Dolomite"] = { name = "Dolomite", id = 7033, current = 0, lvlToFarm = 180, minStock = nil, maxStock = 20000, forceFarm = false, gatherId = 113, job = "mineur" },
+            ["Obsidienne"] = { name = "Obsidienne", id = 11110, current = 0, lvlToFarm = 200, minStock = nil, maxStock = 20000, forceFarm = false, gatherId = 135, job = "mineur" },
         },
         ["bucheron"] = {
             ["Frene"] = { name = "Frene", id = 303, current = 0, lvlToFarm = 1, minStock = nil, maxStock = 3000, forceFarm = false, gatherId = 1, job = "bucheron" },
@@ -1147,6 +1156,9 @@
             ["popoSouvenir"] = { name = "Potion de souvenir", id = 7652, current = 0, lvlToFarm = 1, minStock = nil, maxStock = 3000, forceFarm = false },
             ["popoVieillesse"] = { name = "Potion de viellesse", id = 17060, current = 0, lvlToFarm = 1, minStock = nil, maxStock = 3000, forceFarm = false },
             ["popoAncetre"] = { name = "Potion des ancetre", id = 16419, current = 0, lvlToFarm = 1, minStock = nil, maxStock = 3000, forceFarm = false },
+        },
+        ["monstre"] = {
+
         }
     }
 
@@ -5570,54 +5582,95 @@
     }
 
     local PATH_FIGHT = {
-        ["leveling"] = {
-            ["201"] = { -- Level 1 a 20
-                {
-                    name = "Astrub Piou",
-                    tags = { -- SOON
-                        'Plume de piou',
-                        'Graine de sesame'
-                    },
-                    subArea = "Cite d'Astrub",
-                    ["TP"] = function()
-                        if map:currentMapId() ~= 162791424 then
-                            havreSac()
+        ["Cite d'Astrub"] =  {
+            name = "Astrub Piou",
+            tags = {
+                'Plume de piou',
+                'Graine de sesame'
+            },
+            minLevel = 1,
+            ["TP"] = function()
+                if map:currentMapId() ~= 162791424 then
+                    havreSac()
                
-                        elseif map:currentMapId() == 162791424 then
-                            teleported = true
-                            global:clickPosition(185,290) -- Debug zaap
-                            global:delay(baseDelay)
-                            map:changeMap("zaap(110,190,191105026)") -- Zaap Astrub
-                        end
-                    end,
-                    MONSTER = {
-                        ['MAX'] = {
-                            ["100"] = 1,
-                            ["150"] = 2,
-                            ["250"] = 3,
-                            ["300"] = 4,
-                            ["400"] = 5,
-                            ["500"] = 8
-                        }
-                    },
-                    ["EQUIP_ITEM"] = function()
-                        equipItem()
-                        if currentLevelCharacter == 0 then
-                        end
-                    end,
-                    ["SET_PARAMS"] = function()
-                         global:printMessage("[INFO]["..string.upper(currentJob).."] Parametrage fight")
-                         for kTable, vTable in pairs(FIGHT_FILTERED[pathIndex].MONSTER) do
-                            if kTable == "MIN" then
-                                setMonsters(vTable, 'min')
-                            else
-                                setMonsters(vTable, 'max')                                
-                            end
-                         end
-                    end
+                elseif map:currentMapId() == 162791424 then
+                    teleported = true
+                    global:clickPosition(185,290) -- Debug zaap
+                    global:delay(baseDelay)
+                    map:changeMap("zaap(110,190,191105026)") -- Zaap Astrub
+                end
+            end,
+            MONSTER = {
+                ['MAX'] = {
+                    ["100"] = 1,
+                    ["150"] = 2,
+                    ["250"] = 3,
+                    ["300"] = 4,
+                    ["400"] = 5,
+                    ["500"] = 8
                 }
-            }
-        }
+            },
+            ["EQUIP_ITEM"] = function()
+                equipItem()
+                if currentLevelCharacter == 0 then
+                end
+            end,
+            ["SET_PARAMS"] = function()
+                global:printMessage("[INFO]["..string.upper(currentJob).."] Parametrage fight")
+                for kTable, vTable in pairs(FIGHT_FILTERED[pathIndex].MONSTER) do
+                    if kTable == "MIN" then
+                        setMonsters(vTable, 'min')
+                    else
+                        setMonsters(vTable, 'max')                                
+                    end
+                end
+            end
+        },
+        ["Route des ames"] =  {
+            name = "Incarnam route des ames",
+            tags = {
+                'Cendre eternelle',
+                'Feu interieur',
+                "Cape de l'aventurier"
+            },
+            minLevel = 1,
+            ["TP"] = function()
+                if map:area() ~= 'Incarnam' then
+                    goIncarnam()
+               
+                elseif map:currentMapId() == 162791424 then
+                    teleported = true
+                    global:clickPosition(185,290) -- Debug zaap
+                    global:delay(baseDelay)
+                    map:changeMap("zaap(110,190,191105026)") -- Zaap Astrub
+                end
+            end,
+            MONSTER = {
+                ['MAX'] = {
+                    ["100"] = 1,
+                    ["150"] = 2,
+                    ["250"] = 3,
+                    ["300"] = 4,
+                    ["400"] = 5,
+                    ["500"] = 8
+                }
+            },
+            ["EQUIP_ITEM"] = function()
+                equipItem()
+                if currentLevelCharacter == 0 then
+                end
+            end,
+            ["SET_PARAMS"] = function()
+                global:printMessage("[INFO]["..string.upper(currentJob).."] Parametrage fight")
+                for kTable, vTable in pairs(FIGHT_FILTERED[pathIndex].MONSTER) do
+                    if kTable == "MIN" then
+                        setMonsters(vTable, 'min')
+                    else
+                        setMonsters(vTable, 'max')                                
+                    end
+                end
+            end
+        },
     }
 
     local PATH_REPLACE = {
@@ -7000,74 +7053,25 @@
 
     local tblIndexAddedPath = {}
 
-
-function equipItem()
-    --global:printMessage("equipItem()")
-end
-
-function maison()
-    if map:currentMapId() == 147251 then
+function goIncarnam()
+    if map:currentMapId() == 192415750 then
         global:delay(baseDelay)
-        global:clickPosition(70,195) -- Porte
-        global:delay(longDelay)
-        global:sendKey(xxxxxx)
-        global:sendKey(xxxxxx)
-        global:sendKey(xxxxxx)
-        global:sendKey(xxxxxx)
-        global:sendKey(xxxxxx)
-        global:sendKey(xxxxxx)
-        global:sendKey(xxxxxx)
-        global:sendKey(xxxxxx)
+        global:clickPosition(180,345)
+        global:delay(longDelay * 2)
+    elseif map:currentMapId() == 162791424 then
+        global:clickPosition(185,290) -- Debug zaap
         global:delay(baseDelay)
-        global:clickPosition(325,340) -- Valide
-
-    elseif map:currentMapId() == 4718594 then
+        map:changeMap("zaap(110,190,191105026)") -- Zaap Astrub
+    elseif map:currentMapId() == 191106048 then
         global:delay(baseDelay)
-        global:clickPosition(110,270) -- Escalier
-        global:delay(veryLongDelay)
-
-    elseif map:currentMapId() == 4719618 then
-        if coffreEtage1 then
-            global:delay(baseDelay)
-            global:clickPosition(385,210) -- Coffre maison
-            global:delay(longDelay)
-            global:sendKey(xxxxxx)
-            global:sendKey(xxxxxx)
-            global:sendKey(xxxxxx)
-            global:sendKey(xxxxxx)
-            global:sendKey(xxxxxx)
-            global:sendKey(xxxxxx)
-            global:sendKey(xxxxxx)
-            global:sendKey(xxxxxx)
-            global:delay(baseDelay)
-            global:clickPosition(325,340) -- Valide
-            global:delay(veryLongDelay)
-            storage:putAllItems()
-            global:delay(longDelay)
-            inCoffre()
-        else
-            global:delay(longDelay)
-            global:clickPosition(545,285) -- Escalier
-            global:delay(veryLongDelay)
-        end
-    elseif map:currentMapId() == 4720642 then
+        global:clickPosition(360,180)
+        global:delay(longDelay * 2)
+    elseif map:currentMapId() == 192416776 then
         global:delay(baseDelay)
-        global:clickPosition(440,220) -- Coffre maison
-        global:delay(mediumDelay)
-        global:sendKey(xxxxxx)
-        global:sendKey(xxxxxx)
-        global:sendKey(xxxxxx)
-        global:sendKey(xxxxxx)
-        global:sendKey(xxxxxx)
-        global:sendKey(xxxxxx)
-        global:sendKey(xxxxxx)
-        global:sendKey(xxxxxx)
-        global:delay(baseDelay)
-        global:clickPosition(325,340) -- Valide
-        global:delay(veryLongDelay)
-        storage:putAllItems()
-        global:delay(longDelay)
-        inCoffre()
+        global:clickPosition(340,100)
+        global:delay(longDelay * 2)     
+    else
+        goToCoord(6,-19)
     end
 end
 
@@ -7187,530 +7191,528 @@ function lost()
     finDeBoucle()
 end
 
-function gatherMode()
+function maison()
+    if map:currentMapId() == 147251 then
+        global:delay(baseDelay)
+        global:clickPosition(70,195) -- Porte
+        global:delay(longDelay)
+        global:sendKey(xxxxxx)
+        global:sendKey(xxxxxx)
+        global:sendKey(xxxxxx)
+        global:sendKey(xxxxxx)
+        global:sendKey(xxxxxx)
+        global:sendKey(xxxxxx)
+        global:sendKey(xxxxxx)
+        global:sendKey(xxxxxx)
+        global:delay(baseDelay)
+        global:clickPosition(325,340) -- Valide
 
-    if not started then
-        pathIndex =  nil
-        lastNameZone = nil
-        beforeLastNameZone = nil
-        started = true
-    end
+    elseif map:currentMapId() == 4718594 then
+        global:delay(baseDelay)
+        global:clickPosition(110,270) -- Escalier
+        global:delay(veryLongDelay)
 
-    if goCheckStock then
-        checkStock()
-    end
-
-    if not filterPathByTags then
-        filterPath()
-    end
-
-    if not goCraft and AUTO_OPEN_BAG then
-        checkBag()
-    end
-
-    if timeZoneMode then
-        timeZone()
-        jobTime = diffTime
-    else
-        jobTime = nbBoucle
-    end
-
-    if not setPathToFarm then
-        setPath(PATH_FILTERED)
-    end
-
-    if jobTime >= tbLimit then
-        global:printMessage("[INFO]["..string.upper(currentJob).."] Changement de zone !")
-        if lastTotalGather ~= totalGather then
-            lastTotalGather = totalGather
-            global:printMessage("[INFO]["..string.upper(currentJob).."] Vous avez fait au minimum " ..totalGather.. " recolte")
+    elseif map:currentMapId() == 4719618 then
+        if coffreEtage1 then
+            global:delay(baseDelay)
+            global:clickPosition(385,210) -- Coffre maison
+            global:delay(longDelay)
+            global:sendKey(xxxxxx)
+            global:sendKey(xxxxxx)
+            global:sendKey(xxxxxx)
+            global:sendKey(xxxxxx)
+            global:sendKey(xxxxxx)
+            global:sendKey(xxxxxx)
+            global:sendKey(xxxxxx)
+            global:sendKey(xxxxxx)
+            global:delay(baseDelay)
+            global:clickPosition(325,340) -- Valide
+            global:delay(veryLongDelay)
+            storage:putAllItems()
+            global:delay(longDelay)
+            inCoffre()
+        else
+            global:delay(longDelay)
+            global:clickPosition(545,285) -- Escalier
+            global:delay(veryLongDelay)
         end
-        finDeBoucle()
+    elseif map:currentMapId() == 4720642 then
+        global:delay(baseDelay)
+        global:clickPosition(440,220) -- Coffre maison
+        global:delay(mediumDelay)
+        global:sendKey(xxxxxx)
+        global:sendKey(xxxxxx)
+        global:sendKey(xxxxxx)
+        global:sendKey(xxxxxx)
+        global:sendKey(xxxxxx)
+        global:sendKey(xxxxxx)
+        global:sendKey(xxxxxx)
+        global:sendKey(xxxxxx)
+        global:delay(baseDelay)
+        global:clickPosition(325,340) -- Valide
+        global:delay(veryLongDelay)
+        storage:putAllItems()
+        global:delay(longDelay)
+        inCoffre()
     end
+end
+
+-- Gather
+
+    function gatherMode()
+
+        if goDrop then
+            fightMode()
+        end
+
+        if not started then
+            pathIndex =  nil
+            lastNameZone = nil
+            beforeLastNameZone = nil
+            started = true
+        end
+
+        if goCheckStock then
+            checkStock()
+        end
+
+        if not filterPathByTags then
+            filterPath()
+        end
+
+        if not goCraft and AUTO_OPEN_BAG then
+            checkBag()
+        end
+
+        if timeZoneMode then
+            timeZone()
+            jobTime = diffTime
+        else
+            jobTime = nbBoucle
+        end
+
+        if not setPathToFarm then
+            setPath(PATH_FILTERED)
+        end
+
+        if jobTime >= tbLimit then
+            global:printMessage("[INFO]["..string.upper(currentJob).."] Changement de zone !")
+            if lastTotalGather ~= totalGather then
+                lastTotalGather = totalGather
+                global:printMessage("[INFO]["..string.upper(currentJob).."] Vous avez fait au minimum " ..totalGather.. " recolte")
+            end
+            finDeBoucle()
+        end
     
-    if not teleported then
-        PATH_FILTERED[pathIndex].TP()
-    end
-    return PATH_FILTERED[pathIndex].PATH()
-end
-
-function fightMode()
-    --global:printMessage('Current subArea = '.. map:subArea())
-    --global:printMessage('Current ZoneToFarm = '..ZoneToFarm)
-    local lastXp = character.getLastXpGain()
-    if lastXpGain ~= lastXp and teleported then
-        lastXpGain = lastXp
-        totalXp = totalXp + lastXp
-        totalFight = totalFight + 1
-        global:printMessage("[INFO]["..string.upper(currentJob).."] Niveau courant : " ..currentLevelCharacter)
-        global:printMessage("[INFO]["..string.upper(currentJob).."] Combat effectue : " ..totalFight)
-        global:printMessage("[INFO]["..string.upper(currentJob).."] Xp gagne au dernier combat : " ..lastXp)
-        global:printMessage("[INFO]["..string.upper(currentJob).."] Xp total gagne : " ..totalXp)
-        global:printMessage("[INFO]["..string.upper(currentJob).."] Niveau total gagne : " ..(currentLevelCharacter - startLevelCharacter))
+        if not teleported then
+            PATH_FILTERED[pathIndex].TP()
+        end
+        return PATH_FILTERED[pathIndex].PATH()
     end
 
-    timeZone()
+    function checkStock()
+        local levelJob = job:level(currentIdJob)
+        if GATHER_ALL_RESOURCES_OF_JOB then
+            global:printMessage("[INFO] GATHER_ALL_RESOURCES_OF_JOB et sur true, recolte de toutes les ressource possible du metier actuelle !")
+            for keyTable, vTable in pairs(ITEM) do
+                if keyTable == currentJob then
+                    for _, vItem in pairs(vTable) do
+                        if levelJob >= vItem.lvlToFarm then
+                            table.insert(ELEMENTS_TO_GATHER, vItem.gatherId)
+                            table.insert(TO_FARM, vItem.name)
+                        end
+                    end
+                end
+            end
+        else
+            killDoubleValue(TO_FARM)
+            --global:printMessage("check stock lenght : "..#TO_FARM)
+            for keyTable, vTable in pairs(ITEM) do
+                if keyTable == currentJob then
+                    for _, vItem in pairs(vTable) do
+                        local tmpN = ""
+                        if vItem.minStock ~= nil and vItem.lvlToFarm ~= nil then
+                            if vItem.current < vItem.minStock and levelJob >= vItem.lvlToFarm then
+                                global:printMessage("[INFO]["..string.upper(currentJob).."] Stock de " ..vItem.name.. " incomplet ! minStock = " ..vItem.minStock.. ", Ajout des path contenant " ..vItem.name)
+                                tmpN = vItem.name
+                                table.insert(ELEMENTS_TO_GATHER, vItem.gatherId)
+                                table.insert(TO_FARM, vItem.name)
+                            end
+                        end
+                        if vItem.maxStock ~= nil then
+                            --global:printMessage("[DEV] maxStock de " ..vItem.name.. " different de nil vItem.current = " ..vItem.current.. " vItem.maxStock = " ..vItem.maxStock.. " vItem.forceFarm = " ..tostring(vItem.forceFarm).. " tmpN = " ..tmpN.. " lvlToFarm = " ..vItem.lvlToFarm.. " currentLevelJob = " ..levelJob)
+                            if vItem.forceFarm and vItem.current < vItem.maxStock and vItem.name ~= tmpN and levelJob >= vItem.lvlToFarm then
+                                global:printMessage("[INFO]["..string.upper(currentJob).."] ForceFarm de " ..vItem.name.. " Activer et maxStock = " ..vItem.maxStock.. " non atteint ! Ajout des path contenant " ..vItem.name)
+                                table.insert(ELEMENTS_TO_GATHER, vItem.gatherId)
+                                table.insert(TO_FARM, vItem.name)
+                            end
+                        end
+                    end
 
-    if not started then
-        lastXpGain = character.getLastXpGain()
-        pathIndex =  nil
-        lastNameZone = nil
-        beforeLastNameZone = nil
-        started = true
+                end
+            end
+            setETG()
+        end
+        --global:printMessage("check stock lenght : "..#TO_FARM)
+        lastItag = 0
+        unsetETG()
+        pathReplace()
+        goCheckStock = false
+        global:delay(baseDelay)
+        global:sendKey(72)
+        global:delay(longDelay)
     end
 
-    if not setFightZone then
-        setZoneToFarm()
-    end
-
-    if diffTime >= tbLimit then
-        global:printMessage("[INFO]["..string.upper(currentJob).."] Changement de zone !")
-        finDeBoucle()
-    end
-
-    if not teleported then
-        FIGHT_FILTERED[pathIndex].SET_PARAMS()
-        FIGHT_FILTERED[pathIndex].TP()
-    end
-
-    if currentLevelCharacter ~= character.level() then
-        currentLevelCharacter = character.level()
-        FIGHT_FILTERED[pathIndex].SET_PARAMS()
-    end
-
-    FIGHT_FILTERED[pathIndex].EQUIP_ITEM()
-
-	if map:subArea() == ZoneToFarm then
-        return{ {map = map:currentMapId(), custom = TryFight} }
-    else
-    	return { {map = map:currentMapId(), custom = GoBack} }
-	end
-end
-
-function setZoneToFarm()
-    local levelCharacter = character.level()
-    MIN_MONSTERS = 1
-    MAX_MONSTERS = 8
-    MANDATORY_MONSTERS = {}
-    FORBIDDEN_MONSTERS = {}
-
-    for kJob, vTableFight in pairs(PATH_FIGHT) do
-        if kJob == currentJob then
-            for kLevel, vTablePath in pairs(vTableFight) do
-                if levelCharacter < tonumber(kLevel) then
-                    for _, vPath in pairs(vTablePath) do
-                        --global:printMessage(vPath.name.. " inserted")
-                        table.insert(FIGHT_FILTERED, vPath)
+    function setETG() -- Assigne les ressources a recolter dans ELEMENTS_TO_GATHER
+        for kTable, vTable in pairs(ITEM) do
+            if kTable == currentJob then
+                if #TO_FARM > 0 then
+                    for iTag, vTag in pairs(TO_FARM) do
+                        --global:printMessage('Looking for '..vTag)
+                        if iTag > lastItag or lastItag == 0 then
+                            for _, vItem in pairs(vTable) do
+                                --global:printMessage('vTag : '..vTag..' vItem : '..vItem.name)
+                                if vItem.name == vTag then
+                                    --global:printMessage(vItem.name..' added SetETG : '..vItem.gatherId)
+                                    table.insert(ELEMENTS_TO_GATHER, vItem.gatherId)
+                                    lastItag = iTag
+                                    break
+                                end
+                            end 
+                        end
                     end
                 end
             end
         end
     end
 
-    setPath(FIGHT_FILTERED)
-    setFightZone = true
-end
-
-function setMonsters(tbl, minMax)
-    --global:printMessage("In setMonsters")
-    for kLevel, vSet in pairs(tbl) do
-        local goodChoice = character.maxLifePoints() >= tonumber(kLevel)
-        if minMax == 'min' and goodChoice then
-            --global:printMessage("Min = " ..vSet)
-            MIN_MONSTERS = vSet
-        elseif minMax == 'max' and goodChoice then
-            --global:printMessage("Max = " ..vSet)
-            MAX_MONSTERS = vSet
-        end
-    end
-end
-
-function setPath(tbl)
-    local lastPathIndex
-    if pathIndex ~= nil then
-        beforeLastNameZone = lastNameZone
-        lastNameZone = tbl[pathIndex].name
-        lastPathIndex = pathIndex
-    end
-
-    if #tbl > 3 and lastNameZone ~= nil and beforeLastNameZone ~= nil and pathIndex ~= nil and pathIndex ~= lastPathIndex then
-        while lastNameZone == tbl[pathIndex].name and beforeLastNameZone == tbl[pathIndex].name do
-            pathIndex = math.random(1, #tbl)
-        end
-    elseif #tbl > 2 and lastNameZone ~= nil and pathIndex ~= nil and pathIndex ~= lastPathIndex then
-        while lastNameZone == tbl[pathIndex].name do
-            pathIndex = math.random(1, #tbl)
-        end
-    else
-        pathIndex = math.random(1, #tbl)
-    end
-
-
-    local boucleMax = math.random(bMin, bMax)
-    local timeMaxZone = math.random(tMin, tMax)
-    global:printMessage("[INFO]["..string.upper(currentJob).."] Go " ..tbl[pathIndex].name)
-    if timeZoneMode or currentMode == "fight" then
-        tbLimit = timeMaxZone
-        if currentMode == "fight" then
-            ZoneToFarm = tbl[pathIndex].subArea
-            --global:printMessage(ZoneToFarm)
-        end
-        global:printMessage("[INFO]["..string.upper(currentJob).."] Vous allez passez " ..timeMaxZone.. " minutes dans la zone !")
-    else
-        tbLimit = boucleMax
-        global:printMessage("[INFO]["..string.upper(currentJob).."] Vous allez faire " ..boucleMax.. " boucle dans la zone !")
-    end
-
-    setPathToFarm = true
-end
-
-function filterPath()
-    global:printMessage("[INFO]["..string.upper(currentJob).. "] Filtrage des PATH a farm")
-    killDoubleValue(TO_FARM)
-    --printSimpleTable(TO_FARM)
-    PATH_FILTERED = {}
-    tblIndexAddedPath = {}
-    while true do
-        if #TO_FARM > 0 then
-            for kJob, vTable in pairs(PATH_JOB) do
-                local match = false
-                if kJob == currentJob then
-                    match = true
-                    local step = 0
-                    for iTag, vTag in pairs(TO_FARM) do
-                        if step > 2 then
-                            resetLoop = true
-                            resetInfiniteLoop()
+    function unsetETG() -- Desactive la recolte d'une ressource si maxStock atteint
+        for keyTable, vTable in pairs(ITEM) do
+            if keyTable == currentJob then
+                for kItem, vItem in pairs(vTable) do
+                    if vItem.gatherId ~= nil and vItem.maxStock ~= nil and (vItem.maxStock <= vItem.current) then
+                        global:printMessage("[INFO]["..string.upper(currentJob).."] Desactivation de la recolte de " ..vItem.name.. " maxStock atteint !")
+                        vItem.forceFarm = false
+                        for i, v in pairs(TO_FARM) do
+                            if v == vItem.name then
+                                table.remove(TO_FARM, i)
+                                --global:printMessage("TO_FARM removed")
+                            end
                         end
-                        --global:printMessage("step : "..step)
-                        if iTag >= lastItag then
-                            lastItag = iTag
-                            step = step + 1
-                            for iPath, vPath in pairs(vTable) do
-                                if not alreadyAdded(iPath) then
-                                    --global:printMessage("Looking for add "..vPath.name)
-                                    local goBreak = false
-                                    for _, vTagPath in pairs(vPath.tags) do
-                                        if goBreak then
-                                            break
-                                        end
-                                        if vTag == vTagPath then
-                                            table.insert(tblIndexAddedPath, iPath)
-                                            table.insert(PATH_FILTERED, vPath)
-                                            --global:printMessage(vPath.name.." added vTag : "..vTag.." vTagPath : "..vTagPath)
-                                            goBreak = true
-                                            break                                                               
+                        for iGather, vGather in pairs(ELEMENTS_TO_GATHER) do
+                            if vGather == vItem.gatherId then
+                                table.remove(ELEMENTS_TO_GATHER, iGather)
+                                --global:printMessage("ELEMENTS_TO_GATHER removed")
+                                break
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    function filterPath()
+        global:printMessage("[INFO]["..string.upper(currentJob).. "] Filtrage des PATH a farm")
+        killDoubleValue(TO_FARM)
+        --printSimpleTable(TO_FARM)
+        PATH_FILTERED = {}
+        tblIndexAddedPath = {}
+        while true do
+            if #TO_FARM > 0 then
+                for kJob, vTable in pairs(PATH_JOB) do
+                    local match = false
+                    if kJob == currentJob then
+                        match = true
+                        local step = 0
+                        for iTag, vTag in pairs(TO_FARM) do
+                            if step > 2 then
+                                resetLoop = true
+                                resetInfiniteLoop()
+                            end
+                            --global:printMessage("step : "..step)
+                            if iTag >= lastItag then
+                                lastItag = iTag
+                                step = step + 1
+                                for iPath, vPath in pairs(vTable) do
+                                    if not alreadyAdded(iPath) then
+                                        --global:printMessage("Looking for add "..vPath.name)
+                                        local goBreak = false
+                                        for _, vTagPath in pairs(vPath.tags) do
+                                            if goBreak then
+                                                break
+                                            end
+                                            if vTag == vTagPath then
+                                                table.insert(tblIndexAddedPath, iPath)
+                                                table.insert(PATH_FILTERED, vPath)
+                                                --global:printMessage(vPath.name.." added vTag : "..vTag.." vTagPath : "..vTagPath)
+                                                goBreak = true
+                                                break                                                               
+                                            end
                                         end
                                     end
                                 end
                             end
                         end
                     end
-                end
-                if match then
-                    break
-                end
-            end
-        end
-        if #PATH_FILTERED == 0 then
-            for k, vTbl in pairs(ITEM) do
-                if currentJob == k then
-                    for _, v in pairs(vTbl) do
-                        if v.lvlToFarm <= job:level(currentIdJob) then
-                            table.insert(TO_FARM, v.name)
-                        end
+                    if match then
+                        break
                     end
                 end
             end
-        else
-            break
-        end
-    end
-    lastItag = 0
-    filterPathByTags = true
-end
-
-function alreadyAdded(index)
-    if #tblIndexAddedPath > 0 then
-        for _, v in pairs(tblIndexAddedPath) do
-            if v == index then
-                return true
-            end
-        end
-    end
-    return false
-end
-
-function checkStock()
-    local levelJob = job:level(currentIdJob)
-    if GATHER_ALL_RESOURCES_OF_JOB then
-        global:printMessage("[INFO] GATHER_ALL_RESOURCES_OF_JOB et sur true, recolte de toutes les ressource possible du metier actuelle !")
-        for keyTable, vTable in pairs(ITEM) do
-            if keyTable == currentJob then
-                for _, vItem in pairs(vTable) do
-                    if levelJob >= vItem.lvlToFarm then
-                        table.insert(ELEMENTS_TO_GATHER, vItem.gatherId)
-                        table.insert(TO_FARM, vItem.name)
-                    end
-                end
-            end
-        end
-    else
-        killDoubleValue(TO_FARM)
-        --global:printMessage("check stock lenght : "..#TO_FARM)
-        for keyTable, vTable in pairs(ITEM) do
-            if keyTable == currentJob then
-                for _, vItem in pairs(vTable) do
-                    local tmpN = ""
-                    if vItem.minStock ~= nil and vItem.lvlToFarm ~= nil then
-                        if vItem.current < vItem.minStock and levelJob >= vItem.lvlToFarm then
-                            global:printMessage("[INFO]["..string.upper(currentJob).."] Stock de " ..vItem.name.. " incomplet ! minStock = " ..vItem.minStock.. ", Ajout des path contenant " ..vItem.name)
-                            tmpN = vItem.name
-                            table.insert(ELEMENTS_TO_GATHER, vItem.gatherId)
-                            table.insert(TO_FARM, vItem.name)
-                        end
-                    end
-                    if vItem.maxStock ~= nil then
-                        --global:printMessage("[DEV] maxStock de " ..vItem.name.. " different de nil vItem.current = " ..vItem.current.. " vItem.maxStock = " ..vItem.maxStock.. " vItem.forceFarm = " ..tostring(vItem.forceFarm).. " tmpN = " ..tmpN.. " lvlToFarm = " ..vItem.lvlToFarm.. " currentLevelJob = " ..levelJob)
-                        if vItem.forceFarm and vItem.current < vItem.maxStock and vItem.name ~= tmpN and levelJob >= vItem.lvlToFarm then
-                            global:printMessage("[INFO]["..string.upper(currentJob).."] ForceFarm de " ..vItem.name.. " Activer et maxStock = " ..vItem.maxStock.. " non atteint ! Ajout des path contenant " ..vItem.name)
-                            table.insert(ELEMENTS_TO_GATHER, vItem.gatherId)
-                            table.insert(TO_FARM, vItem.name)
-                        end
-                    end
-                end
-
-            end
-        end
-        setETG()
-    end
-    --global:printMessage("check stock lenght : "..#TO_FARM)
-    lastItag = 0
-    unsetETG()
-    pathReplace()
-    goCheckStock = false
-    global:delay(baseDelay)
-    global:sendKey(72)
-    global:delay(longDelay)
-end
-
-function setETG() -- Assigne les ressources a recolter dans ELEMENTS_TO_GATHER
-    for kTable, vTable in pairs(ITEM) do
-        if kTable == currentJob then
-            if #TO_FARM > 0 then
-                for iTag, vTag in pairs(TO_FARM) do
-                    --global:printMessage('Looking for '..vTag)
-                    if iTag > lastItag or lastItag == 0 then
-                        for _, vItem in pairs(vTable) do
-                            --global:printMessage('vTag : '..vTag..' vItem : '..vItem.name)
-                            if vItem.name == vTag then
-                                --global:printMessage(vItem.name..' added SetETG : '..vItem.gatherId)
-                                table.insert(ELEMENTS_TO_GATHER, vItem.gatherId)
-                                lastItag = iTag
-                                break
+            if #PATH_FILTERED == 0 then
+                for k, vTbl in pairs(ITEM) do
+                    if currentJob == k then
+                        for _, v in pairs(vTbl) do
+                            if v.lvlToFarm <= job:level(currentIdJob) then
+                                table.insert(TO_FARM, v.name)
                             end
-                        end 
-                    end
-                end
-            end
-        end
-    end
-end
-
-function unsetETG() -- Desactive la recolte d'une ressource si maxStock atteint
-    for keyTable, vTable in pairs(ITEM) do
-        if keyTable == currentJob then
-            for kItem, vItem in pairs(vTable) do
-                if vItem.gatherId ~= nil and vItem.maxStock ~= nil and (vItem.maxStock <= vItem.current) then
-                    global:printMessage("[INFO]["..string.upper(currentJob).."] Desactivation de la recolte de " ..vItem.name.. " maxStock atteint !")
-                    vItem.forceFarm = false
-                    for i, v in pairs(TO_FARM) do
-                        if v == vItem.name then
-                            table.remove(TO_FARM, i)
-                            --global:printMessage("TO_FARM removed")
-                        end
-                    end
-                    for iGather, vGather in pairs(ELEMENTS_TO_GATHER) do
-                        if vGather == vItem.gatherId then
-                            table.remove(ELEMENTS_TO_GATHER, iGather)
-                            --global:printMessage("ELEMENTS_TO_GATHER removed")
-                            break
                         end
                     end
                 end
+            else
+                break
             end
         end
-    end
-end
-
-function pathReplace()
-    local levelJob = job:level(currentIdJob)
-
-    if currentJob == "mineur" then
-        if levelJob >= 20 then
-            table.remove(PATH_JOB.mineur, 3)
-            table.insert(PATH_JOB.mineur, 3, PATH_REPLACE.mineur[2])
-            table.remove(PATH_JOB.mineur, 4)
-            table.insert(PATH_JOB.mineur, 4, PATH_REPLACE.mineur[1])
-        end
-        if levelJob >= 40 then
-            table.remove(PATH_JOB.mineur, 4)
-            table.insert(PATH_JOB.mineur, 4, PATH_REPLACE.mineur[3])
-            table.remove(PATH_JOB.mineur, 6)
-            table.insert(PATH_JOB.mineur, 6, PATH_REPLACE.mineur[4])
-        end
-        if levelJob >= 60 then
-            table.remove(PATH_JOB.mineur, 3)
-            table.insert(PATH_JOB.mineur, 3, PATH_REPLACE.mineur[5])
-            table.remove(PATH_JOB.mineur, 4)
-            table.insert(PATH_JOB.mineur, 4, PATH_REPLACE.mineur[6])
-            table.remove(PATH_JOB.mineur, 13)
-            table.insert(PATH_JOB.mineur, 13, PATH_REPLACE.mineur[7])
-        end
-        if levelJob >= 80 then
-            table.remove(PATH_JOB.mineur, 3)
-            table.insert(PATH_JOB.mineur, 3, PATH_REPLACE.mineur[8])
-            table.remove(PATH_JOB.mineur, 4)
-            table.insert(PATH_JOB.mineur, 4, PATH_REPLACE.mineur[9])
-            table.remove(PATH_JOB.mineur, 2)
-            table.insert(PATH_JOB.mineur, 2, PATH_REPLACE.mineur[10])
-        end
-        if levelJob >= 120 then
-            table.remove(PATH_JOB.mineur, 4)
-            table.insert(PATH_JOB.mineur, 4, PATH_REPLACE.mineur[11])
-        end
-        if levelJob >= 160 then
-            table.remove(PATH_JOB.mineur, 2)
-            table.insert(PATH_JOB.mineur, 2, PATH_REPLACE.mineur[12])
-        end
+        lastItag = 0
+        filterPathByTags = true
     end
 
-    if PANDALA and not pandalaInsert then
-        table.insert(PATH_JOB.mineur, PATH_REPLACE.mineur[13])
-        table.insert(PATH_JOB.paysan, PATH_REPLACE.paysan[1])
-        table.insert(PATH_JOB.alchimiste, PATH_REPLACE.alchimiste[1])
-        pandalaInsert = true
-    end
-
-    if SAHARACH and not saharachInsert then
-        table.insert(PATH_JOB.mineur, PATH_REPLACE.mineur[14])
-        saharachInsert = true
-    end
-
-    if FRIGOST1 or FRIGOST2 or FRIGOST3 and not frigost1Insert then
-        table.insert(PATH_JOB.mineur, PATH_REPLACE.mineur[15])
-        table.insert(PATH_JOB.mineur, PATH_REPLACE.mineur[16])
-        table.insert(PATH_JOB.mineur, PATH_REPLACE.mineur[17])       
-        frigost1Insert = true
-    end
-
-    if FRIGOST2 or FRIGOST3 and not frigost2Insert then
-        table.insert(PATH_JOB.mineur, PATH_REPLACE.mineur[18])
-        frigost2Insert = true
-    end
-end
-
-function start()
-    assignWork()
-    global:printMessage("[INFO] Bonjour " ..character:name().. " !")
-    global:printMessage("[INFO] Trajet MultiMetier realiser par yaya#6140")
-    global:printMessage("[INFO] Pour tout probleme critique avec le trajet merci de me mp en m'envoyant l'erreur indique dans la console, le metier et le niveau courant")
-    global:printMessage("[IMPORTANT] Ne pas lancez dans la banque !")
-    global:printMessage("[IMPORTANT] Changer le raccourci 'Fermer les infobulle epingle' par la touche F10 !")
-    global:printMessage("[INFO] Bon bottage ^-^ !")
-
-    if minute >= 10 then
-        global:printMessage("[INFO] Il est " ..heure.. ":" ..minute.. " metier selectionner " ..currentJob)
-    else
-        global:printMessage("[INFO] Il est " ..heure.. ":0" ..minute.. " metier selectionner " ..currentJob)
-    end
-
-    math.randomseed(generateRandomSeed())
-    tmpAutoCraft = AUTO_CRAFT
-    currentLevelCharacter, startLevelCharacter = character.level(), character.level()
-    if currentMode == "gather" then
-        sortCraft()
-    end
-    initScript = true
-    --map:waitMovementFinish(20000)
-end
-
-function sortCraft()
-    if tmpAutoCraft then
-        local levelJob = job:level(currentIdJob)
-        CRAFT_FILTERED = {}
-        AUTO_CRAFT = true
-
-        for kJob, vTable in pairs(CRAFT) do
-            if kJob == currentJob then
-                for _, vCraft in pairs(vTable) do
-                    if vCraft.active and ( levelJob >= vCraft.lvlToDesactive ) then -- Desactivation
-                        global:printMessage("[INFO]["..string.upper(currentJob).."] Desactivation du craft " ..vCraft.name.. " lvlToDesactive atteint")
-                        vCraft.active = false
-                    else
-                        if levelJob >= vCraft.minLevel and vCraft.active then
-                            global:printMessage("[INFO]["..string.upper(currentJob).."] Ajout du craft " ..vCraft.name.. " a la table de craft")
-                            vCraft.waitItemOfAnotherJob = false
-                            table.insert(CRAFT_FILTERED, vCraft)
-                        end
-                    end
+    function alreadyAdded(index)
+        if #tblIndexAddedPath > 0 then
+            for _, v in pairs(tblIndexAddedPath) do
+                if v == index then
+                    return true
                 end
             end
         end
+        return false
     end
-end
 
-function setItem()
-    for _, vTable in pairs(ITEM) do
-        for _, vItem in pairs(vTable) do
-            if storage:itemCount(vItem.id) ~= nil then
-                vItem.current = storage:itemCount(vItem.id)
-                --global:printMessage(vItem.name.. " = " ..vItem.current)
-            end
+    function mainGather()
+        for i = 1 , gatherAttemptByMap do
+            local g = gather()
+            --global:printMessage("Tentative gather : "..i)
+            gatherCount(g)
+            global:delay(delayToRetryGather)
         end
     end
-end
 
-function getItem(idItem, nbItem)
-    while inventory:itemCount(idItem) < nbItem do
-        storage:getItem(idItem, nbItem - inventory:itemCount(idItem))
+    function TryGather()
+        mainGather()
     end
-    global:delay(smallDelay)
-    global:sendKey(121) -- F10
-end
 
-function missingIngredient(vCraft, vIngredient, iIngredient)
-    local notNull = vCraft.ingredient[iIngredient].job ~= nil 
+    function TryGatherWithBP()
+        mainGather()
+        bouclePlus()
+    end
 
-    if notNull and vCraft.ingredient[iIngredient].job == currentJob then
-        global:printMessage("[INFO]["..string.upper(currentJob).."] Manque de " ..vIngredient.name.. " pour craft " ..vCraft.name)
-        table.insert(TO_FARM, vIngredient.name) -- Insert 2x bug tbl 
-        table.insert(TO_FARM, vIngredient.name)
-    elseif notNull and vCraft.ingredient[iIngredient].job == 'divers' then
-        global:printMessage("[INFO]["..string.upper(currentJob).."] Manque d'une ressource non recoltable ou craftable, ressource = " ..vIngredient.name.. " desactivation du craft " ..vCraft.name)
-        vCraft.active = false
-    else
-        if notNull and vCraft.ingredient[iIngredient].job == 'substrat' then
-            global:printMessage("[INFO]["..string.upper(currentJob).."] Manque de " ..vIngredient.name.. " pour craft " ..vCraft.name)
-            vCraft.next = true
+    function TryGatherWithFDB()
+        mainGather()
+        finDeBoucle()
+    end
+
+    function TryGatherWithCM()
+        mainGather()
+        clickMap()
+    end
+
+    function gatherCount(isGather)
+        if not isGather then
+            totalGather = totalGather + 1
+        end
+    end
+
+    function checkBag()
+
+        while inventory:itemCount(7941) > 0 -- Sac de blé
+        or inventory:itemCount(7942) > 0 -- Sac d'Orge
+        or inventory:itemCount(7943) > 0 -- Sac d'Avoine
+        or inventory:itemCount(7944) > 0 -- Sac de Houblon
+        or inventory:itemCount(7945) > 0 -- Sac de Lin
+        or inventory:itemCount(7946) > 0 -- Sac de Seigle
+        or inventory:itemCount(7947) > 0 -- Sac de Riz
+        or inventory:itemCount(7948) > 0 -- Sac de Malt
+        or inventory:itemCount(7949) > 0 -- Sac de Chanvre
+        or inventory:itemCount(16532) > 0 -- Sac de Maïs
+        or inventory:itemCount(16533) > 0 -- Sac de Millet
+        or inventory:itemCount(11113) > 0 do -- Sac de Frostiz
+            openBag()
+        end
+
+        while inventory:itemCount(7964) > 0 -- Sac d'ortie
+        or inventory:itemCount(7965) > 0 -- Sac de sauge
+        or inventory:itemCount(7966) > 0 -- Sac de trefle
+        or inventory:itemCount(7967) > 0 -- Sac de menthe
+        or inventory:itemCount(7968) > 0 -- Sac d'orchidee
+        or inventory:itemCount(7969) > 0 -- Sac d'Edelweiss
+        or inventory:itemCount(7970) > 0 -- Sac de Pandouille
+        or inventory:itemCount(16528) > 0 -- Sac de Ginseng
+        or inventory:itemCount(16529) > 0 -- Sac de Belladone
+        or inventory:itemCount(16530) > 0 -- Sac de Mandragore
+        or inventory:itemCount(11103) > 0 do -- Sac de Perce-Neige
+            openBag()
+        end
+
+        while inventory:itemCount(7971) > 0 -- Sac de fer
+        or inventory:itemCount(7972) > 0 -- Sac de cuivre
+        or inventory:itemCount(7973) > 0 -- Sac de bronze
+        or inventory:itemCount(7974) > 0 -- Sac de Kobalte
+        or inventory:itemCount(7975) > 0 -- Sac de manganese
+        or inventory:itemCount(7976) > 0 -- Sac d'etain
+        or inventory:itemCount(7977) > 0 -- Sac de silicate
+        or inventory:itemCount(7978) > 0 -- Sac d'argent
+        or inventory:itemCount(7979) > 0 -- Sac de Bauxite
+        or inventory:itemCount(7980) > 0 -- Sac d'or
+        or inventory:itemCount(7981) > 0 -- Sac de dolomite
+        or inventory:itemCount(11114) > 0 do -- Sac d'Obsidienne
+            openBag()
+        end
+
+        while inventory:itemCount(7950) > 0 -- Frene
+        or inventory:itemCount(7951) > 0 -- Chataignier
+        or inventory:itemCount(7952) > 0 -- Noyer
+        or inventory:itemCount(7953) > 0 -- Chene
+        or inventory:itemCount(7954) > 0 --Bombu
+        or inventory:itemCount(7955) > 0 -- Oliviolet
+        or inventory:itemCount(7956) > 0 -- Erable
+        or inventory:itemCount(7957) > 0 -- If
+        or inventory:itemCount(7958) > 0 -- Bambou
+        or inventory:itemCount(7959) > 0 -- Merisier
+        or inventory:itemCount(16531) > 0 -- Noisetier
+        or inventory:itemCount(7960) > 0 -- Ebene
+        or inventory:itemCount(7961) > 0 -- Bambou Sombre
+        or inventory:itemCount(7962) > 0 do -- Bois d'Orme
+            openBag()
+        end
+    end
+
+    function openBag()
+        global:delay(baseDelay)
+        global:sendKey(73) -- I
+        global:delay(mediumDelay)
+        global:clickPosition(545,65) -- Consomable
+        global:delay(baseDelay)
+        global:rightClickPosition(485, 105) -- Sac de ressource
+        global:delay(baseDelay)
+        global:clickPosition(440,75) -- Utiliser
+        global:delay(baseDelay)
+        global:sendKey(73) -- I
+        global:delay(mediumDelay)
+    end
+
+-- Fight
+
+    function fightMode()
+        --global:printMessage('Current subArea = '.. map:subArea())
+        --global:printMessage('Current ZoneToFarm = '..ZoneToFarm)
+        local lastXp = character.getLastXpGain()
+        if lastXpGain ~= lastXp and teleported then
+            lastXpGain = lastXp
+            totalXp = totalXp + lastXp
+            totalFight = totalFight + 1
+            global:printMessage("[INFO]["..string.upper(currentJob).."] Niveau courant : " ..currentLevelCharacter)
+            global:printMessage("[INFO]["..string.upper(currentJob).."] Combat effectue : " ..totalFight)
+            global:printMessage("[INFO]["..string.upper(currentJob).."] Xp gagne au dernier combat : " ..lastXp)
+            global:printMessage("[INFO]["..string.upper(currentJob).."] Xp total gagne : " ..totalXp)
+            global:printMessage("[INFO]["..string.upper(currentJob).."] Niveau total gagne : " ..(currentLevelCharacter - startLevelCharacter))
+        end
+
+        timeZone()
+
+        if not started then
+            lastXpGain = character.getLastXpGain()
+            pathIndex =  nil
+            lastNameZone = nil
+            beforeLastNameZone = nil
+            started = true
+        end
+
+        if not setFightZone then
+            setZoneToFarm()
+        end
+
+        if diffTime >= tbLimit then
+            if map:area() == 'Incarnam' then
+                backIncarnam()
+            end
+            global:printMessage("[INFO]["..string.upper(currentJob).."] Changement de zone !")
+            finDeBoucle()
+        end
+
+        if not teleported then
+            FIGHT_FILTERED[pathIndex].SET_PARAMS()
+            FIGHT_FILTERED[pathIndex].TP()
+        end
+
+        if currentLevelCharacter ~= character.level() then
+            currentLevelCharacter = character.level()
+            FIGHT_FILTERED[pathIndex].SET_PARAMS()
+        end
+
+        FIGHT_FILTERED[pathIndex].EQUIP_ITEM()
+
+	    if map:subArea() == ZoneToFarm then
+            return{ {map = map:currentMapId(), custom = TryFight} }
         else
-            global:printMessage("[INFO]["..string.upper(currentJob).."] Manque d'une ressource d'un autre metier, ressource = " ..vIngredient.name.. " desactivation temporaire du craft " ..vCraft.name)
-            vCraft.waitItemOfAnotherJob = true
+    	    return { {map = map:currentMapId(), custom = GoBack} }
+	    end
+    end
+
+    function backIncarnam()
+        if map:currentMapId() ~= 153880835 then
+            goToCoord(4,-3)
+        else
+            global:delay(baseDelay)
+            global:clickPosition(430,360)
+            global:delay(mediumDelay)
+            global:clickPosition(300,400)
+            global:delay(baseDelay)
+            global:clickPosition(300,385)
+            global:delay(mediumDelay)
         end
     end
-end
 
-function resetInfiniteLoop()
-    local currentMap = map:currentMapId()
-    if currentMap == 162791424 then
-        global:printMessage("[INFO] Retour havre")
-        resetLoop = false
-    else
-        global:printMessage("[INFO] Tp havre debug boucle infinie")        
+    function setZoneToFarm()
+        local levelCharacter = character.level()
+        MIN_MONSTERS = 1
+        MAX_MONSTERS = 8
+        MANDATORY_MONSTERS = {}
+        FORBIDDEN_MONSTERS = {}
+
+        for kArea, vPath in pairs(PATH_FIGHT) do
+            if vPath.subArea == nil then
+                vPath.subArea = kArea
+            end
+            if levelCharacter > vPath.minLevel then
+                table.insert(FIGHT_FILTERED, vPath)
+            end
+        end
+
+        setPath(FIGHT_FILTERED)
+        setFightZone = true
     end
-    map:havenbag()
-    global:delay(baseDelay)
-end
+
+    function setMonsters(tbl, minMax)
+        --global:printMessage("In setMonsters")
+        for kLevel, vSet in pairs(tbl) do
+            local goodChoice = character.maxLifePoints() >= tonumber(kLevel)
+            if minMax == 'min' and goodChoice then
+                --global:printMessage("Min = " ..vSet)
+                MIN_MONSTERS = vSet
+            elseif minMax == 'max' and goodChoice then
+                --global:printMessage("Max = " ..vSet)
+                MAX_MONSTERS = vSet
+            end
+        end
+    end
+
+    function equipItem()
+        global:printMessage("equipItem()")
+        --inventory:equipItem(item)
+    end
+
+-- Craft
 
 function inCoffre() -- Verifie si des craft son disponible si aucun craft dispo assigne les ressource a recolte pour la recette, si craft dispo recupere les item
     local levelJob
@@ -7865,233 +7867,6 @@ function inCoffre() -- Verifie si des craft son disponible si aucun craft dispo 
         end
 end
 
-function Time() -- Renvoie l'heure sous forme de number
-    local currentTime = global:time()
-    local heure = tonumber(string.match(currentTime, "%d%d"))
-    local minutes = tonumber(string.match(currentTime, "%d%d", 2))
-
-    if heure == 0 then
-        heure = 24
-    end
-    return heure, minutes
-end
-
-function timeZone() -- Verifie le temps passez dans une zone
-    if not timeInit then
-        initTime = minute
-        timeInit = true
-    end
-
-    global:delay(baseDelay)
-    diffTime = minute - initTime
-
-    if diffTime < 0 then
-        initTime = minute
-        diffTime = lastGoodTime + 2
-    end
-
-    lastGoodTime = diffTime
-end
-
-function generateRandomSeed() -- Genere une seed et la renvoie
-    local time = global:time() 
-    local match = string.match(time, "%d%d")
-    local match2 = string.match(time, "%d%d", 2)
-    local concact = tostring(match).. tostring(match2)
-    time = tonumber(concact) * 1000000000
-
-    local k = character:kamas() * time
-    local p = inventory:pods() * time
-    local c = character:cellId() * time
-    local name = character.name()
-    local seed = (k * k) * (p * p) * (c * c) * time * inventory:podsP() * inventory:podsMax() * #name * character.level() * character.lifePoints() * character.energyPoints() * math.random(0, time)
-    local a, b, m = 3, 3, 2100000000
-    for _ = 0, 15 do
-        seed = ( a * seed + b ) % m
-    end
-    --global:printMessage("[SCRIPT] Seed = " ..seed)
-    return seed
-end
-
-function assignWork() -- Assigne le metier en fonction de l'heure actuelle
-
-    --global:printMessage("ici")
-
-    local lastJob = nil
-
-    if currentJob ~= nil then
-        lastJob = currentJob
-    end
-
-    for _, v in ipairs(WORKTIME) do
-
-        if #WORKTIME == 1 then
-            currentJob = v.job
-            break
-        else
-            local heureDebut, minuteDebut = tonumber(string.match(v.debut, "%d%d")), tonumber(string.match(v.debut, "%d%d", 2))
-            local heureFin, minuteFin = tonumber(string.match(v.fin, "%d%d")), tonumber(string.match(v.fin, "%d%d", 2))
-
-            if heureFin == 0 then
-                heureFin = 24
-            end
-            if heureDebut == 0 then
-                heureDebut = 24
-            end
-
-            if ((heure == heureDebut and minute >= minuteDebut) or heure > heureDebut) and (( heure == heureFin and minute < minuteFin) or heure < heureFin) then
-                currentJob = v.job
-                break
-            elseif heureDebut > heureFin and ((heure == heureDebut and minute >= minuteDebut) or (heure > heureDebut or heure < heureFin)) and ((heure == heureFin and minute < minuteFin) or (heure >= heureDebut or heure < heureFin)) then
-                currentJob = v.job
-                break
-            end
-        end       
-    end
-
-    if currentJob == "mineur" then
-        currentIdJob = 24
-        currentMode = "gather"
-    elseif currentJob == "bucheron" then
-        currentIdJob = 2
-        currentMode = "gather"
-    elseif currentJob == "alchimiste" then
-        currentIdJob = 26
-        currentMode = "gather"
-    elseif currentJob == "paysan" then
-        currentIdJob = 28
-        currentMode = "gather"
-    else
-        currentMode = "fight"
-    end
-
-    if lastJob ~= nil then
-        if lastJob ~= currentJob then
-            global:printMessage("[INFO] Changement de metier ! Go farm " ..currentJob)
-            checkRessource = false
-            pathIndex = nil
-            sortCraft()
-            finDeBoucle()
-        end
-    end
-    --global:printMessage(currentJob)
-end
-
-function checkBag()
-
-    while inventory:itemCount(7941) > 0 -- Sac de blé
-    or inventory:itemCount(7942) > 0 -- Sac d'Orge
-    or inventory:itemCount(7943) > 0 -- Sac d'Avoine
-    or inventory:itemCount(7944) > 0 -- Sac de Houblon
-    or inventory:itemCount(7945) > 0 -- Sac de Lin
-    or inventory:itemCount(7946) > 0 -- Sac de Seigle
-    or inventory:itemCount(7947) > 0 -- Sac de Riz
-    or inventory:itemCount(7948) > 0 -- Sac de Malt
-    or inventory:itemCount(7949) > 0 -- Sac de Chanvre
-    or inventory:itemCount(16532) > 0 -- Sac de Maïs
-    or inventory:itemCount(16533) > 0 -- Sac de Millet
-    or inventory:itemCount(11113) > 0 do -- Sac de Frostiz
-        openBag()
-    end
-
-    while inventory:itemCount(7964) > 0 -- Sac d'ortie
-    or inventory:itemCount(7965) > 0 -- Sac de sauge
-    or inventory:itemCount(7966) > 0 -- Sac de trefle
-    or inventory:itemCount(7967) > 0 -- Sac de menthe
-    or inventory:itemCount(7968) > 0 -- Sac d'orchidee
-    or inventory:itemCount(7969) > 0 -- Sac d'Edelweiss
-    or inventory:itemCount(7970) > 0 -- Sac de Pandouille
-    or inventory:itemCount(16528) > 0 -- Sac de Ginseng
-    or inventory:itemCount(16529) > 0 -- Sac de Belladone
-    or inventory:itemCount(16530) > 0 -- Sac de Mandragore
-    or inventory:itemCount(11103) > 0 do -- Sac de Perce-Neige
-        openBag()
-    end
-
-    while inventory:itemCount(7971) > 0 -- Sac de fer
-    or inventory:itemCount(7972) > 0 -- Sac de cuivre
-    or inventory:itemCount(7973) > 0 -- Sac de bronze
-    or inventory:itemCount(7974) > 0 -- Sac de Kobalte
-    or inventory:itemCount(7975) > 0 -- Sac de manganese
-    or inventory:itemCount(7976) > 0 -- Sac d'etain
-    or inventory:itemCount(7977) > 0 -- Sac de silicate
-    or inventory:itemCount(7978) > 0 -- Sac d'argent
-    or inventory:itemCount(7979) > 0 -- Sac de Bauxite
-    or inventory:itemCount(7980) > 0 -- Sac d'or
-    or inventory:itemCount(7981) > 0 -- Sac de dolomite
-    or inventory:itemCount(11114) > 0 do -- Sac d'Obsidienne
-        openBag()
-    end
-
-    while inventory:itemCount(7950) > 0 -- Frene
-    or inventory:itemCount(7951) > 0 -- Chataignier
-    or inventory:itemCount(7952) > 0 -- Noyer
-    or inventory:itemCount(7953) > 0 -- Chene
-    or inventory:itemCount(7954) > 0 --Bombu
-    or inventory:itemCount(7955) > 0 -- Oliviolet
-    or inventory:itemCount(7956) > 0 -- Erable
-    or inventory:itemCount(7957) > 0 -- If
-    or inventory:itemCount(7958) > 0 -- Bambou
-    or inventory:itemCount(7959) > 0 -- Merisier
-    or inventory:itemCount(16531) > 0 -- Noisetier
-    or inventory:itemCount(7960) > 0 -- Ebene
-    or inventory:itemCount(7961) > 0 -- Bambou Sombre
-    or inventory:itemCount(7962) > 0 do -- Bois d'Orme
-        openBag()
-    end
-end
-
-function openBag()
-    global:delay(baseDelay)
-    global:sendKey(73) -- I
-    global:delay(mediumDelay)
-    global:clickPosition(545,65) -- Consomable
-    global:delay(baseDelay)
-    global:rightClickPosition(485, 105) -- Sac de ressource
-    global:delay(baseDelay)
-    global:clickPosition(440,75) -- Utiliser
-    global:delay(baseDelay)
-    global:sendKey(73) -- I
-    global:delay(mediumDelay)
-end
-
-function killDoubleValue(tbl)
-    if #tbl > 1 then
-        local tblCompare = tbl
-
-        for _, vComp in pairs(tblCompare) do
-            local count = 0
-            for iTbl, vTbl in pairs(tbl) do
-                if vComp == vTbl then
-                    count = count + 1
-                end
-                if vComp == vTbl and count > 1 then
-                    --global:printMessage("[DEV] " ..vTbl.. " removed ! Count = " ..count) 
-                    table.remove(tbl, iTbl)
-                end
-            end
-        end
-    end
-end
-
-function finDeBoucle() -- Reset de variables et teleporte au havre pour une nouvelle boucle
-    nbBoucle = 0
-    MULTIPLE_MAP:Reset()
-    setPathToFarm = false
-    teleported = false
-    resetFuncTimeZone()
-    havreSac()
-    global:delay(mediumDelay)
-end
-
-function resetFuncTimeZone() -- Reset les variable de la fonction timeZone
-    timeInit = false
-    oneHourPassed = false
-    diffTime = 0
-    tmpTime = 0
-    lastGoodTime = 0
-end
-
 function canCraft(itemName, job) -- Verifie si un craft et possible en fonction du nom de l'item passez en parametre et le metier actuelle passez en parametre
     local currentItem, clc = 0, 0
     local cantCraft, lotActive = false, false
@@ -8145,10 +7920,73 @@ function canCraft(itemName, job) -- Verifie si un craft et possible en fonction 
         return false, false, tblIngredient
     end              
 end
+                              
+function setItem()
+    for _, vTable in pairs(ITEM) do
+        for _, vItem in pairs(vTable) do
+            if storage:itemCount(vItem.id) ~= nil then
+                vItem.current = storage:itemCount(vItem.id)
+                --global:printMessage(vItem.name.. " = " ..vItem.current)
+            end
+        end
+    end
+end
 
-function printSimpleTable(tbl)
-    for i, v in pairs(tbl) do
-        global:printMessage("[PRINT]" ..v)
+function getItem(idItem, nbItem)
+    while inventory:itemCount(idItem) < nbItem do
+        storage:getItem(idItem, nbItem - inventory:itemCount(idItem))
+    end
+    global:delay(smallDelay)
+    global:sendKey(121) -- F10
+end
+
+function missingIngredient(vCraft, vIngredient, iIngredient)
+    local notNull = vCraft.ingredient[iIngredient].job ~= nil 
+
+    if notNull and vCraft.ingredient[iIngredient].job == currentJob then
+        global:printMessage("[INFO]["..string.upper(currentJob).."] Manque de " ..vIngredient.name.. " pour craft " ..vCraft.name)
+        table.insert(TO_FARM, vIngredient.name) -- Insert 2x bug tbl 
+        table.insert(TO_FARM, vIngredient.name)
+    elseif notNull and vCraft.ingredient[iIngredient].job == 'divers' then
+        global:printMessage("[INFO]["..string.upper(currentJob).."] Manque d'une ressource non recoltable ou craftable, ressource = " ..vIngredient.name.. " desactivation du craft " ..vCraft.name)
+        vCraft.active = false
+    elseif notNull and vCraft.ingredient[iIngredient].job == 'drop' then
+        global:printMessage("[INFO]["..string.upper(currentJob).."] Manque de " ..vIngredient.name.. " activation du mode combat")
+        table.insert(TO_FARM, vIngredient.name)
+        goDrop = true
+    else
+        if notNull and vCraft.ingredient[iIngredient].job == 'substrat' then
+            global:printMessage("[INFO]["..string.upper(currentJob).."] Manque de " ..vIngredient.name.. " pour craft " ..vCraft.name)
+            vCraft.next = true
+        else
+            global:printMessage("[INFO]["..string.upper(currentJob).."] Manque d'une ressource d'un autre metier, ressource = " ..vIngredient.name.. " desactivation temporaire du craft " ..vCraft.name)
+            vCraft.waitItemOfAnotherJob = true
+        end
+    end
+end
+
+function sortCraft()
+    if tmpAutoCraft then
+        local levelJob = job:level(currentIdJob)
+        CRAFT_FILTERED = {}
+        AUTO_CRAFT = true
+
+        for kJob, vTable in pairs(CRAFT) do
+            if kJob == currentJob then
+                for _, vCraft in pairs(vTable) do
+                    if vCraft.active and ( levelJob >= vCraft.lvlToDesactive ) then -- Desactivation
+                        global:printMessage("[INFO]["..string.upper(currentJob).."] Desactivation du craft " ..vCraft.name.. " lvlToDesactive atteint")
+                        vCraft.active = false
+                    else
+                        if levelJob >= vCraft.minLevel and vCraft.active then
+                            global:printMessage("[INFO]["..string.upper(currentJob).."] Ajout du craft " ..vCraft.name.. " a la table de craft")
+                            vCraft.waitItemOfAnotherJob = false
+                            table.insert(CRAFT_FILTERED, vCraft)
+                        end
+                    end
+                end
+            end
+        end
     end
 end
 
@@ -8160,143 +7998,299 @@ function calculMaxItemInInventory(poidTotalDesRessource, nbRessource) -- Calcul 
     return (podsRestant() / poidTotalDesRessource) * nbRessource
 end
 
-function useClick() -- clickPosition
-    if map:currentMapId() == 191104002 then
-	    global:clickPosition(405,180)
-	    global:delay(longDelay)
-    elseif map:currentMapId() == 189531140 then
-    	global:clickPosition(390,215)
-	    global:delay(longDelay)
-    end
-end
+function craft() -- clickPosition dans les atelier
+    global:delay(veryLongDelay)
 
-function useBank() -- Ouvre la banque
-    global:delay(baseDelay)
-    if PNJ_BANK == "left" then
-        global:clickPosition(340,190) -- Hiboux blanc
-    elseif  PNJ_BANK == "right" then
-        global:clickPosition(405,225) -- Hiboux noir
-    end
-    global:delay(mediumDelay)
-    global:clickPosition(300,385) -- Consulter coffre
-    global:delay(mediumDelay)
-    storage:putAllItems()
-    inCoffre()
-end
-
-function havreSac() -- Teleporte dans le havresac
-    currentMapId = map:currentMapId()
-    -- ChangeMap si havre indispo
-        if currentMapId == 11111111
-        or currentMapId == 11111111 then
-            map:changeMap("top")
+    if currentJob == "paysan" then
+        if toolCraft == "four" then
+            global:clickPosition(200,230) -- Atelier
+        elseif toolCraft == "atelier" then
+            global:clickPosition(265,220) -- Atelier
         end
-
-        if currentMapId == 11111111
-        or currentMapId == 11111111 then
-            map:changeMap("bottom")
-        end
-
-        if currentMapId == 165153537
-        or currentMapId == 11111111 then
-            map:changeMap("left")
-        end
-
-        if currentMapId == 11111111
-        or currentMapId == 11111111 then
-            map:changeMap("right")
-        end
-        -- Mine Ebbernar
-            if currentMapId == 29622275
-            or currentMapId == 29622272
-            or currentMapId == 29622531 then
-                map:changeMap("450")
-            end
-            if currentMapId == 29622534 then
-                map:changeMap("424")
-            end
-        -- Mine manganese ile dragoeuf
-            if currentMapId == 86246410 then
-                map:changeMap("431")
-            end
-        -- Mine Bwork
-            if currentMapId == 104860165
-            or currentMapId == 104859139 then
-                map:changeMap("444")
-            end
-            if currentMapId == 104860169 then
-                map:changeMap("263")
-            end
-            if currentMapId == 104861193 then
-                map:changeMap("254")
-            end
-            if currentMapId == 104859145 then
-                map:changeMap("457")
-            end
-            if currentMapId == 104858121 then
-                map:changeMap("507")
-            end
-            if currentMapId == 104861189 then
-                map:changeMap("451")
-            end
-            if currentMapId == 104862213 then
-                map:changeMap("376")
-            end
-            if currentMapId == 104858119 then
-                map:changeMap("207")
-            end
-        -- Mine Maksage
-            if currentMapId == 57017861 then
-                map:changeMap("270")
-            end
-            if currentMapId == 56886787 then
-                map:changeMap("396")
-            end
-            if currentMapId == 56885763 then
-                map:changeMap("436")
-            end
-            if currentMapId == 57016837 then
-                map:changeMap("401")
-            end
-            if currentMapId == 57016835 then
-                map:changeMap("409")
-            end
-            if currentMapId == 57017859 then
-                map:changeMap("395")
-            end
-
-    if map:currentMapId() ~= 162791424 then
-        global:delay(baseDelay)
-        global:sendKey(72)
         global:delay(veryLongDelay)
+        global:clickPosition(10,380) -- Afficher uniquement les recette possible
+        global:delay(longDelay)
+        global:clickPosition(120,115) -- Item a craft
+        global:delay(longDelay)
+        global:clickPosition(350,210) -- Quantité
+        global:delay(longDelay)
+        global:sendKey(13) -- Valide les quantité
+        global:delay(longDelay)
+        global:clickPosition(350,250) -- Craft
+    elseif currentJob == "alchimiste" then
+        global:clickPosition(200,200) -- Atelier
+        global:delay(veryLongDelay)
+        global:clickPosition(10,380) -- Afficher uniquement les recette possible
+        global:delay(longDelay)
+        global:clickPosition(120,115) -- Item a craft
+        global:delay(longDelay)
+        global:clickPosition(350,210) -- Quantité
+        global:delay(longDelay)
+        global:sendKey(13) -- Valide les quantité
+        global:delay(longDelay)
+        global:clickPosition(350,250) -- Craft
+    elseif currentJob == "mineur" then
+        global:clickPosition(480,200) -- Atelier
+        global:delay(veryLongDelay)
+        global:clickPosition(10,380) -- Afficher uniquement les recette possible
+        global:delay(longDelay)
+        global:clickPosition(120,115) -- Item a craft
+        global:delay(longDelay)
+        global:clickPosition(350,210) -- Quantit�
+        global:delay(longDelay)
+        global:sendKey(13) -- Valide les quantit�
+        global:delay(longDelay)
+        global:clickPosition(350,250) -- Craft
+    elseif currentJob == "bucheron" then
+        global:clickPosition(300,200) -- Atelier
+        global:delay(veryLongDelay)
+        global:clickPosition(10,380) -- Afficher uniquement les recette possible
+        global:delay(longDelay)
+        global:clickPosition(120,115) -- Item a craft
+        global:delay(longDelay)
+        global:clickPosition(350,210) -- Quantit�
+        global:delay(longDelay)
+        global:sendKey(13) -- Valide les quantit�
+        global:delay(longDelay)
+        global:clickPosition(350,250) -- Craft
+
+    end
+
+    global:delay(longDelay)
+    global:clickPosition(630,40) -- Quitte atelier
+    global:delay(longDelay)
+    goCraft = false
+    checkRessource = false
+    teleported = false
+    havreSac()
+end
+
+function setPath(tbl)
+    local lastPathIndex
+    if pathIndex ~= nil then
+        beforeLastNameZone = lastNameZone
+        lastNameZone = tbl[pathIndex].name
+        lastPathIndex = pathIndex
+    end
+
+    if #tbl > 3 and lastNameZone ~= nil and beforeLastNameZone ~= nil and pathIndex ~= nil and pathIndex ~= lastPathIndex then
+        while lastNameZone == tbl[pathIndex].name and beforeLastNameZone == tbl[pathIndex].name do
+            pathIndex = math.random(1, #tbl)
+        end
+    elseif #tbl > 2 and lastNameZone ~= nil and pathIndex ~= nil and pathIndex ~= lastPathIndex then
+        while lastNameZone == tbl[pathIndex].name do
+            pathIndex = math.random(1, #tbl)
+        end
+    else
+        pathIndex = math.random(1, #tbl)
+    end
+
+
+    local boucleMax = math.random(bMin, bMax)
+    local timeMaxZone = math.random(tMin, tMax)
+    global:printMessage("[INFO]["..string.upper(currentJob).."] Go " ..tbl[pathIndex].name)
+    if timeZoneMode or currentMode == "fight" then
+        tbLimit = timeMaxZone
+        if currentMode == "fight" then
+            ZoneToFarm = tbl[pathIndex].subArea
+            --global:printMessage(ZoneToFarm)
+        end
+        global:printMessage("[INFO]["..string.upper(currentJob).."] Vous allez passez " ..timeMaxZone.. " minutes dans la zone !")
+    else
+        tbLimit = boucleMax
+        global:printMessage("[INFO]["..string.upper(currentJob).."] Vous allez faire " ..boucleMax.. " boucle dans la zone !")
+    end
+
+    setPathToFarm = true
+end
+
+-- Gestion zone
+
+function pathReplace()
+    local levelJob = job:level(currentIdJob)
+
+    if currentJob == "mineur" then
+        if levelJob >= 20 then
+            table.remove(PATH_JOB.mineur, 3)
+            table.insert(PATH_JOB.mineur, 3, PATH_REPLACE.mineur[2])
+            table.remove(PATH_JOB.mineur, 4)
+            table.insert(PATH_JOB.mineur, 4, PATH_REPLACE.mineur[1])
+        end
+        if levelJob >= 40 then
+            table.remove(PATH_JOB.mineur, 4)
+            table.insert(PATH_JOB.mineur, 4, PATH_REPLACE.mineur[3])
+            table.remove(PATH_JOB.mineur, 6)
+            table.insert(PATH_JOB.mineur, 6, PATH_REPLACE.mineur[4])
+        end
+        if levelJob >= 60 then
+            table.remove(PATH_JOB.mineur, 3)
+            table.insert(PATH_JOB.mineur, 3, PATH_REPLACE.mineur[5])
+            table.remove(PATH_JOB.mineur, 4)
+            table.insert(PATH_JOB.mineur, 4, PATH_REPLACE.mineur[6])
+            table.remove(PATH_JOB.mineur, 13)
+            table.insert(PATH_JOB.mineur, 13, PATH_REPLACE.mineur[7])
+        end
+        if levelJob >= 80 then
+            table.remove(PATH_JOB.mineur, 3)
+            table.insert(PATH_JOB.mineur, 3, PATH_REPLACE.mineur[8])
+            table.remove(PATH_JOB.mineur, 4)
+            table.insert(PATH_JOB.mineur, 4, PATH_REPLACE.mineur[9])
+            table.remove(PATH_JOB.mineur, 2)
+            table.insert(PATH_JOB.mineur, 2, PATH_REPLACE.mineur[10])
+        end
+        if levelJob >= 120 then
+            table.remove(PATH_JOB.mineur, 4)
+            table.insert(PATH_JOB.mineur, 4, PATH_REPLACE.mineur[11])
+        end
+        if levelJob >= 160 then
+            table.remove(PATH_JOB.mineur, 2)
+            table.insert(PATH_JOB.mineur, 2, PATH_REPLACE.mineur[12])
+        end
+    end
+
+    if PANDALA and not pandalaInsert then
+        table.insert(PATH_JOB.mineur, PATH_REPLACE.mineur[13])
+        table.insert(PATH_JOB.paysan, PATH_REPLACE.paysan[1])
+        table.insert(PATH_JOB.alchimiste, PATH_REPLACE.alchimiste[1])
+        pandalaInsert = true
+    end
+
+    if SAHARACH and not saharachInsert then
+        table.insert(PATH_JOB.mineur, PATH_REPLACE.mineur[14])
+        saharachInsert = true
+    end
+
+    if FRIGOST1 or FRIGOST2 or FRIGOST3 and not frigost1Insert then
+        table.insert(PATH_JOB.mineur, PATH_REPLACE.mineur[15])
+        table.insert(PATH_JOB.mineur, PATH_REPLACE.mineur[16])
+        table.insert(PATH_JOB.mineur, PATH_REPLACE.mineur[17])       
+        frigost1Insert = true
+    end
+
+    if FRIGOST2 or FRIGOST3 and not frigost2Insert then
+        table.insert(PATH_JOB.mineur, PATH_REPLACE.mineur[18])
+        frigost2Insert = true
     end
 end
 
-function transporteurFrigostien()
-    global:delay(mediumDelay)
-    global:clickPosition(355,320) -- PNJ
-    global:delay(longDelay * 2)
+function Time() -- Renvoie l'heure sous forme de number
+    local currentTime = global:time()
+    local heure = tonumber(string.match(currentTime, "%d%d"))
+    local minutes = tonumber(string.match(currentTime, "%d%d", 2))
 
-    if idTransporteur == "sakai" then
-        if FRIGOST1 or FRIGOST2 or FRIGOST3 then
-            global:clickPosition(300,395) -- Sakai                     
-        end
-    elseif idTransporteur == "maksage" or idTransporteur == "hissoire" then
-        if FRIGOST3 then
-            global:clickPosition(300,355) -- Berceau alma                               
-        elseif FRIGOST2 then
-            global:clickPosition(300,370) -- Berceau alma                     
-        elseif FRIGOST1 then
-            global:clickPosition(300,385) -- Berceau alma          
-        end
-    elseif idTransporteur == "ouronigride" then
-        if FRIGOST3 then
-            global:clickPosition(300,370) -- Ouronigride                     
-        elseif FRIGOST2 then
-            global:clickPosition(300,385) -- Ouronigride                     
-        end
-       
+    if heure == 0 then
+        heure = 24
     end
+    return heure, minutes
+end
+
+function timeZone() -- Verifie le temps passez dans une zone
+    if not timeInit then
+        initTime = minute
+        timeInit = true
+    end
+
+    global:delay(baseDelay)
+    diffTime = minute - initTime
+
+    if diffTime < 0 then
+        initTime = minute
+        diffTime = lastGoodTime + 2
+    end
+
+    lastGoodTime = diffTime
+end
+
+function assignWork() -- Assigne le metier en fonction de l'heure actuelle
+
+    --global:printMessage("ici")
+
+    local lastJob = nil
+
+    if currentJob ~= nil then
+        lastJob = currentJob
+    end
+
+    for _, v in ipairs(WORKTIME) do
+
+        if #WORKTIME == 1 then
+            currentJob = v.job
+            break
+        else
+            local heureDebut, minuteDebut = tonumber(string.match(v.debut, "%d%d")), tonumber(string.match(v.debut, "%d%d", 2))
+            local heureFin, minuteFin = tonumber(string.match(v.fin, "%d%d")), tonumber(string.match(v.fin, "%d%d", 2))
+
+            if heureFin == 0 then
+                heureFin = 24
+            end
+            if heureDebut == 0 then
+                heureDebut = 24
+            end
+
+            if ((heure == heureDebut and minute >= minuteDebut) or heure > heureDebut) and (( heure == heureFin and minute < minuteFin) or heure < heureFin) then
+                currentJob = v.job
+                if v.forceGatherAllRessourcesOfJob ~= nil and v.forceGatherAllRessourcesOfJob then
+                    GATHER_ALL_RESOURCES_OF_JOB = v.forceGatherAllRessourcesOfJob
+                else
+                    GATHER_ALL_RESOURCES_OF_JOB = tmpGatherAll
+                end
+                break
+            elseif heureDebut > heureFin and ((heure == heureDebut and minute >= minuteDebut) or (heure > heureDebut or heure < heureFin)) and ((heure == heureFin and minute < minuteFin) or (heure >= heureDebut or heure < heureFin)) then
+                currentJob = v.job
+                if v.forceGatherAllRessourcesOfJob ~= nil and v.forceGatherAllRessourcesOfJob then
+                    GATHER_ALL_RESOURCES_OF_JOB = v.forceGatherAllRessourcesOfJob
+                else
+                    GATHER_ALL_RESOURCES_OF_JOB = tmpGatherAll
+                end
+                break
+            end
+        end       
+    end
+
+    if currentJob == "mineur" then
+        currentIdJob = 24
+        currentMode = "gather"
+    elseif currentJob == "bucheron" then
+        currentIdJob = 2
+        currentMode = "gather"
+    elseif currentJob == "alchimiste" then
+        currentIdJob = 26
+        currentMode = "gather"
+    elseif currentJob == "paysan" then
+        currentIdJob = 28
+        currentMode = "gather"
+    else
+        currentMode = "fight"
+    end
+
+    if lastJob ~= nil then
+        if lastJob ~= currentJob then
+            global:printMessage("[INFO] Changement de metier ! Go farm " ..currentJob)
+            checkRessource = false
+            pathIndex = nil
+            sortCraft()
+            finDeBoucle()
+        end
+    end
+    --global:printMessage(currentJob)
+end
+
+function finDeBoucle() -- Reset de variables et teleporte au havre pour une nouvelle boucle
+    nbBoucle = 0
+    MULTIPLE_MAP:Reset()
+    setPathToFarm = false
+    teleported = false
+    resetFuncTimeZone()
+    havreSac()
+    global:delay(mediumDelay)
+end
+
+function resetFuncTimeZone() -- Reset les variable de la fonction timeZone
+    timeInit = false
+    oneHourPassed = false
+    diffTime = 0
+    tmpTime = 0
+    lastGoodTime = 0
 end
 
 function zaapiToPath()
@@ -8439,105 +8433,301 @@ function clickMap()
         end
 end
 
-function craft() -- clickPosition dans les atelier
-    global:delay(veryLongDelay)
+function havreSac() -- Teleporte dans le havresac
+    if map:area() == 'Incarnam' then
+        backIncarnam()
+    end
 
-    if currentJob == "paysan" then
-        if toolCraft == "four" then
-            global:clickPosition(200,230) -- Atelier
-        elseif toolCraft == "atelier" then
-            global:clickPosition(265,220) -- Atelier
+    currentMapId = map:currentMapId()
+    -- ChangeMap si havre indispo
+        if currentMapId == 11111111
+        or currentMapId == 11111111 then
+            map:changeMap("top")
         end
-        global:delay(veryLongDelay)
-        global:clickPosition(10,380) -- Afficher uniquement les recette possible
-        global:delay(longDelay)
-        global:clickPosition(120,115) -- Item a craft
-        global:delay(longDelay)
-        global:clickPosition(350,210) -- Quantité
-        global:delay(longDelay)
-        global:sendKey(13) -- Valide les quantité
-        global:delay(longDelay)
-        global:clickPosition(350,250) -- Craft
-    elseif currentJob == "alchimiste" then
-        global:clickPosition(200,200) -- Atelier
-        global:delay(veryLongDelay)
-        global:clickPosition(10,380) -- Afficher uniquement les recette possible
-        global:delay(longDelay)
-        global:clickPosition(120,115) -- Item a craft
-        global:delay(longDelay)
-        global:clickPosition(350,210) -- Quantité
-        global:delay(longDelay)
-        global:sendKey(13) -- Valide les quantité
-        global:delay(longDelay)
-        global:clickPosition(350,250) -- Craft
-    elseif currentJob == "mineur" then
-        global:clickPosition(480,200) -- Atelier
-        global:delay(veryLongDelay)
-        global:clickPosition(10,380) -- Afficher uniquement les recette possible
-        global:delay(longDelay)
-        global:clickPosition(120,115) -- Item a craft
-        global:delay(longDelay)
-        global:clickPosition(350,210) -- Quantit�
-        global:delay(longDelay)
-        global:sendKey(13) -- Valide les quantit�
-        global:delay(longDelay)
-        global:clickPosition(350,250) -- Craft
-    elseif currentJob == "bucheron" then
-        global:clickPosition(300,200) -- Atelier
-        global:delay(veryLongDelay)
-        global:clickPosition(10,380) -- Afficher uniquement les recette possible
-        global:delay(longDelay)
-        global:clickPosition(120,115) -- Item a craft
-        global:delay(longDelay)
-        global:clickPosition(350,210) -- Quantit�
-        global:delay(longDelay)
-        global:sendKey(13) -- Valide les quantit�
-        global:delay(longDelay)
-        global:clickPosition(350,250) -- Craft
 
+        if currentMapId == 11111111
+        or currentMapId == 11111111 then
+            map:changeMap("bottom")
+        end
+
+        if currentMapId == 165153537
+        or currentMapId == 11111111 then
+            map:changeMap("left")
+        end
+
+        if currentMapId == 11111111
+        or currentMapId == 11111111 then
+            map:changeMap("right")
+        end
+        -- Mine Ebbernar
+            if currentMapId == 29622275
+            or currentMapId == 29622272
+            or currentMapId == 29622531 then
+                map:changeMap("450")
+            end
+            if currentMapId == 29622534 then
+                map:changeMap("424")
+            end
+        -- Mine manganese ile dragoeuf
+            if currentMapId == 86246410 then
+                map:changeMap("431")
+            end
+        -- Mine Bwork
+            if currentMapId == 104860165
+            or currentMapId == 104859139 then
+                map:changeMap("444")
+            end
+            if currentMapId == 104860169 then
+                map:changeMap("263")
+            end
+            if currentMapId == 104861193 then
+                map:changeMap("254")
+            end
+            if currentMapId == 104859145 then
+                map:changeMap("457")
+            end
+            if currentMapId == 104858121 then
+                map:changeMap("507")
+            end
+            if currentMapId == 104861189 then
+                map:changeMap("451")
+            end
+            if currentMapId == 104862213 then
+                map:changeMap("376")
+            end
+            if currentMapId == 104858119 then
+                map:changeMap("207")
+            end
+        -- Mine Maksage
+            if currentMapId == 57017861 then
+                map:changeMap("270")
+            end
+            if currentMapId == 56886787 then
+                map:changeMap("396")
+            end
+            if currentMapId == 56885763 then
+                map:changeMap("436")
+            end
+            if currentMapId == 57016837 then
+                map:changeMap("401")
+            end
+            if currentMapId == 57016835 then
+                map:changeMap("409")
+            end
+            if currentMapId == 57017859 then
+                map:changeMap("395")
+            end
+
+    if map:currentMapId() ~= 162791424 then
+        global:delay(baseDelay)
+        global:sendKey(72)
+        global:delay(veryLongDelay)
+    end
+end
+
+function transporteurFrigostien()
+    global:delay(mediumDelay)
+    global:clickPosition(355,320) -- PNJ
+    global:delay(longDelay * 2)
+
+    if idTransporteur == "sakai" then
+        if FRIGOST1 or FRIGOST2 or FRIGOST3 then
+            global:clickPosition(300,395) -- Sakai                     
+        end
+    elseif idTransporteur == "maksage" or idTransporteur == "hissoire" then
+        if FRIGOST3 then
+            global:clickPosition(300,355) -- Berceau alma                               
+        elseif FRIGOST2 then
+            global:clickPosition(300,370) -- Berceau alma                     
+        elseif FRIGOST1 then
+            global:clickPosition(300,385) -- Berceau alma          
+        end
+    elseif idTransporteur == "ouronigride" then
+        if FRIGOST3 then
+            global:clickPosition(300,370) -- Ouronigride                     
+        elseif FRIGOST2 then
+            global:clickPosition(300,385) -- Ouronigride                     
+        end
+       
+    end
+end
+
+-- Autre
+
+function start()
+    assignWork()
+    global:printMessage("[INFO] Bonjour " ..character:name().. " !")
+    global:printMessage("[INFO] Trajet MultiMetier realiser par yaya#6140")
+    global:printMessage("[INFO] Pour tout probleme critique avec le trajet merci de me mp en m'envoyant l'erreur indique dans la console, le metier et le niveau courant")
+    global:printMessage("[IMPORTANT] Ne pas lancez dans la banque !")
+    global:printMessage("[IMPORTANT] Changer le raccourci 'Fermer les infobulle epingle' par la touche F10 !")
+    global:printMessage("[INFO] Bon bottage ^-^ !")
+
+    if minute >= 10 then
+        global:printMessage("[INFO] Il est " ..heure.. ":" ..minute.. " metier selectionner " ..currentJob)
+    else
+        global:printMessage("[INFO] Il est " ..heure.. ":0" ..minute.. " metier selectionner " ..currentJob)
     end
 
-    global:delay(longDelay)
-    global:clickPosition(630,40) -- Quitte atelier
-    global:delay(longDelay)
-    goCraft = false
-    checkRessource = false
-    teleported = false
-    havreSac()
+    math.randomseed(generateRandomSeed())
+    tmpAutoCraft = AUTO_CRAFT
+    tmpGatherAll = GATHER_ALL_RESOURCES_OF_JOB
+    currentLevelCharacter, startLevelCharacter = character.level(), character.level()
+    if currentMode == "gather" then
+        sortCraft()
+    end
+    initScript = true
+    --map:waitMovementFinish(20000)
 end
 
-function mainGather()
-    for i = 1 , gatherAttemptByMap do
-        local g = gather()
-        --global:printMessage("Tentative gather : "..i)
-        gatherCount(g)
-        global:delay(delayToRetryGather)
+function useClick() -- clickPosition
+    if map:currentMapId() == 191104002 then
+	    global:clickPosition(405,180)
+	    global:delay(longDelay)
+    elseif map:currentMapId() == 189531140 then
+    	global:clickPosition(390,215)
+	    global:delay(longDelay)
     end
 end
 
-function TryGather()
-    mainGather()
-end
-
-function TryGatherWithBP()
-    mainGather()
-    bouclePlus()
-end
-
-function TryGatherWithFDB()
-    mainGather()
-    finDeBoucle()
-end
-
-function TryGatherWithCM()
-    mainGather()
-    clickMap()
-end
-
-function gatherCount(isGather)
-    if not isGather then
-        totalGather = totalGather + 1
+function useBank() -- Ouvre la banque
+    global:delay(baseDelay)
+    if PNJ_BANK == "left" then
+        global:clickPosition(340,190) -- Hiboux blanc
+    elseif  PNJ_BANK == "right" then
+        global:clickPosition(405,225) -- Hiboux noir
     end
+    global:delay(mediumDelay)
+    global:clickPosition(300,385) -- Consulter coffre
+    global:delay(mediumDelay)
+    storage:putAllItems()
+    inCoffre()
+end
+
+function resetInfiniteLoop()
+    local currentMap = map:currentMapId()
+    if currentMap == 162791424 then
+        global:printMessage("[INFO] Retour havre")
+        resetLoop = false
+    else
+        global:printMessage("[INFO] Tp havre debug boucle infinie")        
+    end
+    map:havenbag()
+    global:delay(baseDelay)
+end
+
+function generateRandomSeed() -- Genere une seed et la renvoie
+    local time = global:time() 
+    local match = string.match(time, "%d%d")
+    local match2 = string.match(time, "%d%d", 2)
+    local concact = tostring(match).. tostring(match2)
+    time = tonumber(concact) * 1000000000
+
+    local k = character:kamas() * time
+    local p = inventory:pods() * time
+    local c = character:cellId() * time
+    local name = character.name()
+    local seed = (k * k) * (p * p) * (c * c) * time * inventory:podsP() * inventory:podsMax() * #name * character.level() * character.lifePoints() * character.energyPoints() * math.random(0, time)
+    local a, b, m = 3, 3, 2100000000
+    for _ = 0, 15 do
+        seed = ( a * seed + b ) % m
+    end
+    --global:printMessage("[SCRIPT] Seed = " ..seed)
+    return seed
+end
+
+function killDoubleValue(tbl)
+    if #tbl > 1 then
+        local tblCompare = tbl
+
+        for _, vComp in pairs(tblCompare) do
+            local count = 0
+            for iTbl, vTbl in pairs(tbl) do
+                if vComp == vTbl then
+                    count = count + 1
+                end
+                if vComp == vTbl and count > 1 then
+                    --global:printMessage("[DEV] " ..vTbl.. " removed ! Count = " ..count) 
+                    table.remove(tbl, iTbl)
+                end
+            end
+        end
+    end
+end
+
+function printSimpleTable(tbl)
+    for i, v in pairs(tbl) do
+        global:printMessage("[PRINT]" ..v)
+    end
+end
+
+function goToCoord(coordX, coordY)
+	local currentX, currentY = getMapXY()
+
+	--print("currentX = "..currentX..", currentY = "..currentY)
+
+	if currentX == coordX and currentY == coordY then
+		print("[INFO] Vous etes arriver a destination !")
+	else
+		local possibleDirections = {}
+		local otherDirection = {}
+
+		if currentX > coordX then
+			table.insert(possibleDirections, Directions.left)
+			table.insert(otherDirection, Directions.right)
+			--print("left insert")
+		elseif currentX < coordX then
+			table.insert(possibleDirections, Directions.right)
+			table.insert(otherDirection, Directions.left)
+			--print("right insert")
+		else
+			table.insert(otherDirection, Directions.left)
+			table.insert(otherDirection, Directions.right)
+		end
+
+		if currentY > coordY then
+			table.insert(possibleDirections, Directions.top)
+			table.insert(otherDirection, Directions.bottom)
+			--print("top insert")
+		elseif currentY < coordY then
+			table.insert(possibleDirections, Directions.bottom)
+			table.insert(otherDirection, Directions.top)
+			--print("bottom insert")	
+		else
+			table.insert(otherDirection, Directions.bottom)
+			table.insert(otherDirection, Directions.top)
+		end
+
+		TryChangeMap(possibleDirections, otherDirection)
+	end
+end
+
+function getMapXY()
+    local currentPos = tostring(map:currentPos())
+    local currentX = tonumber(string.sub(currentPos, 0, string.find(currentPos, ",") - 1))
+    local currentY = tonumber(string.sub(currentPos, -2))
+	local i = 0
+
+	if currentX == nil then
+		--print('currentX = nil')
+		currentX = 0
+	end
+
+	while currentY == nil do
+		--print('currentY = nil')
+		if i == 0 then
+			currentY = tonumber(string.sub(currentPos, -1))
+		else
+			currentY = 0
+		end
+		i = i + 1
+	end
+
+	return currentX, currentY
+end
+
+function print(str)
+	global:printMessage(str)
 end
 
 -- TOM LA VACHETTE FUNCTION
@@ -8589,6 +8779,17 @@ function MULTIPLE_MAP:Reset(tab)
 	self.CurrentSteps = {}
 end
 
+function shuffleList(list)
+	newList = {}
+
+	for i = 1, #list do
+		e = table.remove(list, math.random(1, #list))
+		table.insert(newList, e)
+	end
+
+	return newList
+end
+
 -- Lmoony ZONE FARMER SCRIPT
 
 function Rand()
@@ -8625,35 +8826,50 @@ function DisableDirection(dirArray, dir)
 end
 
 function GetRandomDirection(dirArray)
-	-- global:printMessage('GetRandomDirection()')
 	local randomDir = math.floor(Rand()*#dirArray) + 1
+	if #dirArray > 1 then
+		dirArray = shuffleList(dirArray)
+	end
 	for i, v in ipairs(dirArray) do
 		if i == randomDir then
+			--print('GetRandomDirection '..v)
 			return v
 		end
 	end
 end
 
-function TryChangeMap()
-	--global:printMessage('TryChangeMap()')
+function TryChangeMap(possibleDirections, otherDirection)
 	local dir
-	local possibleDirections = {
-		Directions.left,
-		Directions.top, 
-		Directions.right, 
-		Directions.bottom
-	}
+
+	if possibleDirections == nil then
+		possibleDirections = {
+            Directions.left,
+            Directions.right,
+            Directions.top,
+            Directions.bottom
+        }
+	end
+
 	if G_dir ~= nil then
 		DisableDirection(possibleDirections, GetOppositeDirection(G_dir))
+		if otherDirection ~= nil then
+			DisableDirection(otherDirection, GetOppositeDirection(G_dir))
+		end
 	end
+
 	dir = GetRandomDirection(possibleDirections)
 	G_dir = dir
 
 	while not(map:changeMap(dir)) do
 		DisableDirection(possibleDirections, dir)
+        if otherDirection ~= nil then
+		    DisableDirection(otherDirection, dir)
+        end
 		dir = GetRandomDirection(possibleDirections)
+		if dir == nil and otherDirection ~= nil then
+			dir = GetRandomDirection(otherDirection)
+		end
 		G_dir = dir
-		global:delay(10000)
 	end
 end
 
